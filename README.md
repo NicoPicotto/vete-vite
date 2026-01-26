@@ -1,17 +1,66 @@
-# React + TypeScript + Vite
+# VeteVite - Sistema de Gestión Veterinaria
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema de gestión integral para clínicas veterinarias desarrollado con React, Vite, TypeScript y shadcn/ui.
 
-Currently, two official plugins are available:
+## Stack Tecnológico
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** + **Vite 7**
+- **TypeScript 5.9**
+- **shadcn/ui** (Radix UI + Tailwind CSS 4)
+- **React Router v6**
+- **React Hook Form + Zod** (validaciones)
+- **date-fns** (manejo de fechas)
+- **Sonner** (notificaciones)
 
-## React Compiler
+## Inicio Rápido
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+```bash
+# Instalar dependencias
+npm install
 
-Note: This will impact Vite dev & build performances.
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Build para producción
+npm run build
+
+# Preview del build
+npm run preview
+```
+
+## Documentación del Proyecto
+
+Ver [CLAUDE.md](./CLAUDE.md) para:
+- Scope completo del proyecto
+- Estructura de datos
+- Fases de desarrollo
+- Roadmap y features
+
+## Estructura del Proyecto
+
+```
+src/
+├── components/        # Componentes reutilizables
+│   ├── ui/           # shadcn components
+│   ├── clientes/     # Componentes de clientes
+│   ├── mascotas/     # Componentes de mascotas
+│   ├── historia/     # Historia clínica
+│   └── layout/       # Layout y navegación
+├── views/            # Páginas principales
+├── lib/              # Utilidades y types
+├── hooks/            # Custom hooks
+└── context/          # React Context
+```
+
+## Estado Actual
+
+**Fase 1 completada** ✅
+- Setup base y estructura de carpetas
+- React Router configurado
+- Sidebar navigation con shadcn/ui
+- Types y mock data definidos
+
+**Próximo**: Fase 2 - CRUD de Clientes y Mascotas
 
 ## Expanding the ESLint configuration
 

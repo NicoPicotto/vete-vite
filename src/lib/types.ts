@@ -1,0 +1,171 @@
+// ============================================
+// TYPES Y INTERFACES PRINCIPALES
+// Sistema de Gestión Veterinaria
+// ============================================
+
+// ============================================
+// CLIENTE
+// ============================================
+export interface Cliente {
+  id: string;
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  email?: string;
+  direccion?: string;
+  dniCuit?: string;
+  fechaRegistro: Date;
+  saldoPendiente: number; // Monto total que debe
+}
+
+export type ClienteFormData = Omit<Cliente, 'id' | 'fechaRegistro' | 'saldoPendiente'>;
+
+// ============================================
+// MASCOTA
+// ============================================
+export type Especie = 'Perro' | 'Gato' | 'Exótico' | 'Ave' | 'Roedor' | 'Reptil' | 'Otro';
+export type Sexo = 'Macho' | 'Hembra';
+export type EstadoMascota = 'Activo' | 'Fallecido';
+
+export interface Mascota {
+  id: string;
+  clienteId: string;
+  nombre: string;
+  especie: Especie;
+  raza: string;
+  fechaNacimiento?: Date;
+  edad?: string; // Puede ser calculada o ingresada manualmente
+  sexo: Sexo;
+  estado: EstadoMascota;
+  otrasCaracteristicas?: string; // Campo libre para notas adicionales
+}
+
+export type MascotaFormData = Omit<Mascota, 'id'>;
+
+// ============================================
+// HISTORIA CLÍNICA
+// ============================================
+export interface ArchivoAdjunto {
+  id: string;
+  nombre: string;
+  url: string; // URL o base64 del archivo
+  tipo: string; // image/png, application/pdf, etc.
+  fecha: Date;
+}
+
+export interface HistoriaClinica {
+  id: string;
+  mascotaId: string;
+  fecha: Date;
+  motivoConsulta: string;
+  diagnostico: string;
+  tratamiento: string;
+  peso?: number; // en kg
+  temperatura?: number; // en °C
+  vacunasAplicadas?: string[];
+  archivosAdjuntos?: ArchivoAdjunto[];
+  notas?: string;
+  veterinario?: string; // Nombre del profesional (hardcoded por ahora)
+  itemsPago?: string[]; // IDs de items de pago asociados
+}
+
+export type HistoriaClinicaFormData = Omit<HistoriaClinica, 'id' | 'fecha'>;
+
+// ============================================
+// PAGOS
+// ============================================
+export type EstadoPago = 'Pendiente' | 'Pagado Parcial' | 'Pagado';
+
+export interface PagoParcial {
+  id: string;
+  monto: number;
+  fecha: Date;
+  notas?: string;
+}
+
+export interface ItemPago {
+  id: string;
+  historiaClinicaId?: string; // Puede estar asociado a una consulta específica
+  clienteId: string;
+  descripcion: string;
+  monto: number;
+  fecha: Date;
+  estado: EstadoPago;
+  montoPagado: number;
+  pagosParciales: PagoParcial[];
+}
+
+export type ItemPagoFormData = Omit<ItemPago, 'id' | 'fecha' | 'estado' | 'montoPagado' | 'pagosParciales'>;
+
+// ============================================
+// RECORDATORIOS
+// ============================================
+export type FrecuenciaRecurrencia = 'Mensual' | 'Trimestral' | 'Semestral' | 'Anual' | 'Personalizado';
+export type EstadoRecordatorio = 'Pendiente' | 'Completado' | 'Cancelado';
+
+export interface Recordatorio {
+  id: string;
+  historiaClinicaId: string;
+  mascotaId: string;
+  clienteId: string; // Para facilitar búsquedas
+  titulo: string;
+  descripcion?: string;
+  fechaRecordatorio: Date;
+  esRecurrente: boolean;
+  frecuenciaRecurrencia?: FrecuenciaRecurrencia;
+  intervaloPersonalizado?: number; // En días, si es personalizado
+  estado: EstadoRecordatorio;
+  creadoPor?: string; // Nombre del veterinario
+  fechaCreacion: Date;
+}
+
+export type RecordatorioFormData = Omit<Recordatorio, 'id' | 'fechaCreacion' | 'estado'>;
+
+// ============================================
+// ESTADO DE CUENTA
+// ============================================
+export interface EstadoCuenta {
+  clienteId: string;
+  itemsPendientes: ItemPago[];
+  totalDeuda: number;
+  ultimoPago?: {
+    fecha: Date;
+    monto: number;
+  };
+}
+
+// ============================================
+// VISTA FICHA RÁPIDA
+// ============================================
+export interface FichaRapida {
+  cliente: Cliente;
+  mascotas: Mascota[];
+  ultimaConsulta?: {
+    mascota: Mascota;
+    consulta: HistoriaClinica;
+  };
+  proximoRecordatorio?: Recordatorio;
+  saldoPendiente: number;
+}
+
+// ============================================
+// BÚSQUEDA
+// ============================================
+export type TipoResultadoBusqueda = 'cliente' | 'mascota';
+
+export interface ResultadoBusqueda {
+  tipo: TipoResultadoBusqueda;
+  id: string;
+  texto: string; // Texto a mostrar en el resultado
+  subtexto?: string; // Información adicional
+  cliente?: Cliente;
+  mascota?: Mascota;
+}
+
+// ============================================
+// UTILIDADES
+// ============================================
+export interface SelectOption {
+  value: string;
+  label: string;
+}
