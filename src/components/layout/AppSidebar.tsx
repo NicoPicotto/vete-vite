@@ -41,7 +41,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
           <PawPrint className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold">¡Hola Flor!</span>
+          <span className="text-md font-bold">Clínica Para Mascotas</span>
         </div>
       </SidebarHeader>
 

@@ -1,10 +1,444 @@
+import { useState } from 'react';
+import { useData } from '@/context/DataContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { PagoItemForm } from '@/components/pagos/PagoItemForm';
+import { PagoParcialForm } from '@/components/pagos/PagoParcialForm';
+import type { ItemPago } from '@/lib/types';
+import type { ItemPagoFormValues, PagoParcialFormValues } from '@/lib/schemas';
+import { DollarSign, Pencil, Trash2, CreditCard, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
 export default function PagosView() {
+  const navigate = useNavigate();
+  const {
+    clientes,
+    itemsPago,
+    addItemPago,
+    updateItemPago,
+    deleteItemPago,
+    getItemsPagoByClienteId,
+    getSaldoCliente,
+    registrarPagoParcial,
+  } = useData();
+
+  // Estados para formularios
+  const [itemFormOpen, setItemFormOpen] = useState(false);
+  const [pagoFormOpen, setPagoFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [selectedItem, setSelectedItem] = useState<ItemPago | null>(null);
+
+  // Estado para AlertDialog de eliminación
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<ItemPago | null>(null);
+
+  // Clientes con saldo pendiente
+  const clientesConSaldo = clientes
+    .map((cliente) => ({
+      ...cliente,
+      saldoPendiente: getSaldoCliente(cliente.id),
+    }))
+    .filter((cliente) => cliente.saldoPendiente > 0)
+    .sort((a, b) => b.saldoPendiente - a.saldoPendiente);
+
+  // ============================================
+  // HANDLERS - ITEM PAGO
+  // ============================================
+
+  const handleEditItem = (item: ItemPago) => {
+    setSelectedItem(item);
+    setFormMode('edit');
+    setItemFormOpen(true);
+  };
+
+  const handleDeleteClick = (item: ItemPago) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (itemToDelete) {
+      deleteItemPago(itemToDelete.id);
+      toast.success('Item de pago eliminado correctamente');
+      setItemToDelete(null);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleItemSubmit = (data: ItemPagoFormValues) => {
+    if (formMode === 'create') {
+      const entregaInicial = data.entregaInicial || 0;
+      const montoPagado = Math.min(entregaInicial, data.monto);
+
+      let estadoInicial: 'Pendiente' | 'Pagado Parcial' | 'Pagado' = 'Pendiente';
+      if (montoPagado >= data.monto) {
+        estadoInicial = 'Pagado';
+      } else if (montoPagado > 0) {
+        estadoInicial = 'Pagado Parcial';
+      }
+
+      const pagosParciales = montoPagado > 0 ? [{
+        id: crypto.randomUUID(),
+        monto: montoPagado,
+        fecha: data.fecha,
+        notas: 'Pago inicial',
+      }] : [];
+
+      const newItem: ItemPago = {
+        id: crypto.randomUUID(),
+        clienteId: data.clienteId,
+        descripcion: data.descripcion,
+        monto: data.monto,
+        fecha: data.fecha,
+        estado: estadoInicial,
+        montoPagado,
+        pagosParciales,
+      };
+      addItemPago(newItem);
+      toast.success(montoPagado > 0 ? 'Pago creado y entrega inicial registrada' : 'Item de pago creado correctamente');
+    } else if (selectedItem) {
+      updateItemPago(selectedItem.id, {
+        descripcion: data.descripcion,
+        monto: data.monto,
+        fecha: data.fecha,
+      });
+      toast.success('Item de pago actualizado correctamente');
+    }
+  };
+
+  // ============================================
+  // HANDLERS - PAGO PARCIAL
+  // ============================================
+
+  const handleRegistrarPago = (item: ItemPago) => {
+    setSelectedItem(item);
+    setPagoFormOpen(true);
+  };
+
+  const handlePagoParcialSubmit = (data: PagoParcialFormValues) => {
+    if (selectedItem) {
+      registrarPagoParcial(selectedItem.id, data.monto, data.notas);
+      toast.success('Pago registrado correctamente');
+    }
+  };
+
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
+
+  const getEstadoBadgeVariant = (estado: ItemPago['estado']) => {
+    switch (estado) {
+      case 'Pagado':
+        return 'default';
+      case 'Pagado Parcial':
+        return 'secondary';
+      default:
+        return 'destructive';
+    }
+  };
+
+  const getClienteNombre = (clienteId: string) => {
+    const cliente = clientes.find((c) => c.id === clienteId);
+    return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
+  };
+
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Pagos y Cuentas</h1>
-      <p className="text-muted-foreground">
-        Gestión de pagos, cuentas corrientes y saldos pendientes
-      </p>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Pagos y Cuentas</h1>
+        <p className="text-muted-foreground">
+          Gestión de pagos, cuentas corrientes y saldos pendientes
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="saldos" className="w-full">
+        <TabsList>
+          <TabsTrigger value="saldos">
+            <DollarSign className="mr-2 h-4 w-4" />
+            Clientes con Saldo ({clientesConSaldo.length})
+          </TabsTrigger>
+          <TabsTrigger value="todos">
+            <CreditCard className="mr-2 h-4 w-4" />
+            Todos los Pagos ({itemsPago.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: Clientes con Saldo */}
+        <TabsContent value="saldos" className="space-y-4">
+          {clientesConSaldo.length === 0 ? (
+            <Card>
+              <CardContent className="py-10">
+                <div className="text-center text-muted-foreground">
+                  <DollarSign className="mx-auto h-12 w-12 opacity-50 mb-4" />
+                  <p>No hay clientes con saldo pendiente</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {clientesConSaldo.map((cliente) => {
+                const items = getItemsPagoByClienteId(cliente.id);
+                const itemsPendientes = items.filter((i) => i.estado !== 'Pagado');
+
+                return (
+                  <Card key={cliente.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle>
+                            {cliente.nombre} {cliente.apellido}
+                          </CardTitle>
+                          <CardDescription>
+                            {cliente.telefono} {cliente.email && `• ${cliente.email}`}
+                          </CardDescription>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Saldo Total</p>
+                          <p className="text-2xl font-bold text-destructive">
+                            ${Math.round(cliente.saldoPendiente).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead className="text-right">Monto</TableHead>
+                            <TableHead className="text-right">Pagado</TableHead>
+                            <TableHead className="text-right">Pendiente</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {itemsPendientes.map((item) => {
+                            const pendiente = item.monto - item.montoPagado;
+                            return (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">
+                                  {item.descripcion}
+                                </TableCell>
+                                <TableCell>
+                                  {format(item.fecha, 'dd/MM/yyyy', { locale: es })}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  ${Math.round(item.monto).toLocaleString()}
+                                </TableCell>
+                                <TableCell className="text-right text-green-600">
+                                  ${Math.round(item.montoPagado).toLocaleString()}
+                                </TableCell>
+                                <TableCell className="text-right font-bold text-destructive">
+                                  ${Math.round(pendiente).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={getEstadoBadgeVariant(item.estado)}>
+                                    {item.estado}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRegistrarPago(item)}
+                                      title="Registrar pago"
+                                    >
+                                      <CreditCard className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditItem(item)}
+                                      title="Editar"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => navigate(`/clientes/${cliente.id}`)}
+                                      title="Ver perfil del cliente"
+                                    >
+                                      <User className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* TAB 2: Todos los Pagos */}
+        <TabsContent value="todos">
+          <Card>
+            <CardHeader>
+              <CardTitle>Todos los Items de Pago</CardTitle>
+              <CardDescription>
+                Lista completa de todos los items de pago registrados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {itemsPago.length === 0 ? (
+                <div className="py-10 text-center text-muted-foreground">
+                  <CreditCard className="mx-auto h-12 w-12 opacity-50 mb-4" />
+                  <p>No hay items de pago registrados</p>
+                  <p className="text-sm mt-2">Crea items de pago desde la vista de detalle de cada cliente</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                      <TableHead className="text-right">Pagado</TableHead>
+                      <TableHead className="text-right">Pendiente</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {itemsPago
+                      .sort((a, b) => b.fecha.getTime() - a.fecha.getTime())
+                      .map((item) => {
+                        const pendiente = item.monto - item.montoPagado;
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">
+                              {getClienteNombre(item.clienteId)}
+                            </TableCell>
+                            <TableCell>{item.descripcion}</TableCell>
+                            <TableCell>
+                              {format(item.fecha, 'dd/MM/yyyy', { locale: es })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              ${Math.round(item.monto).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right text-green-600">
+                              ${Math.round(item.montoPagado).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-destructive">
+                              ${Math.round(pendiente).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getEstadoBadgeVariant(item.estado)}>
+                                {item.estado}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {item.estado !== 'Pagado' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRegistrarPago(item)}
+                                  >
+                                    <CreditCard className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditItem(item)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(item)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Formulario Item Pago */}
+      <PagoItemForm
+        open={itemFormOpen}
+        onOpenChange={setItemFormOpen}
+        onSubmit={handleItemSubmit}
+        initialData={selectedItem || undefined}
+        mode={formMode}
+      />
+
+      {/* Formulario Pago Parcial */}
+      <PagoParcialForm
+        open={pagoFormOpen}
+        onOpenChange={setPagoFormOpen}
+        onSubmit={handlePagoParcialSubmit}
+        itemPago={selectedItem}
+      />
+
+      {/* AlertDialog Eliminar */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el item de pago "{itemToDelete?.descripcion}".
+              {itemToDelete && itemToDelete.pagosParciales.length > 0 && (
+                <span className="block mt-2 font-semibold text-destructive">
+                  Este item tiene {itemToDelete.pagosParciales.length} pago(s) parcial(es) registrado(s).
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

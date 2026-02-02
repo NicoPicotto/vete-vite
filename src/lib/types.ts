@@ -101,11 +101,11 @@ export type ItemPagoFormData = Omit<ItemPago, 'id' | 'fecha' | 'estado' | 'monto
 // RECORDATORIOS
 // ============================================
 export type FrecuenciaRecurrencia = 'Mensual' | 'Trimestral' | 'Semestral' | 'Anual' | 'Personalizado';
-export type EstadoRecordatorio = 'Pendiente' | 'Completado' | 'Cancelado';
+export type EstadoRecordatorio = 'Pendiente' | 'Completado' | 'Reprogramado' | 'Cancelado';
 
 export interface Recordatorio {
   id: string;
-  historiaClinicaId: string;
+  historiaClinicaId?: string; // Opcional - solo si viene desde historia clínica
   mascotaId: string;
   clienteId: string; // Para facilitar búsquedas
   titulo: string;
@@ -117,6 +117,8 @@ export interface Recordatorio {
   estado: EstadoRecordatorio;
   creadoPor?: string; // Nombre del veterinario
   fechaCreacion: Date;
+  fechaOriginal?: Date; // Para tracking si fue reprogramado
+  notasReprogramacion?: string; // Razón de la reprogramación
 }
 
 export type RecordatorioFormData = Omit<Recordatorio, 'id' | 'fechaCreacion' | 'estado'>;

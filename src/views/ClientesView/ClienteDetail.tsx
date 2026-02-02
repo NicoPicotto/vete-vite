@@ -1,370 +1,941 @@
-import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useData } from '@/context/DataContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useData } from "@/context/DataContext";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { ArrowLeft, Mail, Phone, MapPin, CreditCard, Plus, Eye, Edit, Trash2 } from 'lucide-react';
-import { ClienteForm } from '@/components/clientes/ClienteForm';
-import { MascotaForm } from '@/components/mascotas/MascotaForm';
-import type { ClienteFormValues, MascotaFormValues } from '@/lib/schemas';
-import { toast } from 'sonner';
+   Card,
+   CardContent,
+   CardDescription,
+   CardHeader,
+   CardTitle,
+} from "@/components/ui/card";
+import {
+   Table,
+   TableBody,
+   TableCell,
+   TableHead,
+   TableHeader,
+   TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+   AlertDialog,
+   AlertDialogAction,
+   AlertDialogCancel,
+   AlertDialogContent,
+   AlertDialogDescription,
+   AlertDialogFooter,
+   AlertDialogHeader,
+   AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+   ArrowLeft,
+   Mail,
+   Phone,
+   MapPin,
+   CreditCard,
+   Plus,
+   Eye,
+   Edit,
+   Trash2,
+   Bell,
+   Calendar as CalendarIcon,
+   CheckCircle,
+   XCircle,
+} from "lucide-react";
+import { ClienteForm } from "@/components/clientes/ClienteForm";
+import { MascotaForm } from "@/components/mascotas/MascotaForm";
+import { PagoItemForm } from "@/components/pagos/PagoItemForm";
+import { PagoParcialForm } from "@/components/pagos/PagoParcialForm";
+import { RecordatorioForm } from "@/components/recordatorios/RecordatorioForm";
+import { ReprogramarDialog } from "@/components/recordatorios/ReprogramarDialog";
+import type {
+   ClienteFormValues,
+   MascotaFormValues,
+   ItemPagoFormValues,
+   PagoParcialFormValues,
+   RecordatorioFormValues,
+   ReprogramarRecordatorioFormValues,
+} from "@/lib/schemas";
+import type { ItemPago, Recordatorio } from "@/lib/types";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function ClienteDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const {
-    getClienteById,
-    getMascotasByClienteId,
-    getItemsPagoByClienteId,
-    updateCliente,
-    deleteCliente,
-    addMascota,
-    updateMascota,
-    deleteMascota,
-  } = useData();
+   const { id } = useParams<{ id: string }>();
+   const navigate = useNavigate();
+   const {
+      getClienteById,
+      getMascotasByClienteId,
+      getItemsPagoByClienteId,
+      updateCliente,
+      deleteCliente,
+      addMascota,
+      updateMascota,
+      deleteMascota,
+      addItemPago,
+      updateItemPago,
+      deleteItemPago,
+      registrarPagoParcial,
+      getRecordatoriosByClienteId,
+      addRecordatorio,
+      deleteRecordatorio,
+      reprogramarRecordatorio,
+      completarRecordatorio,
+      cancelarRecordatorio,
+   } = useData();
 
-  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isMascotaFormOpen, setIsMascotaFormOpen] = useState(false);
-  const [editingMascota, setEditingMascota] = useState<string | null>(null);
+   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
+   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+   const [isMascotaFormOpen, setIsMascotaFormOpen] = useState(false);
+   const [editingMascota, setEditingMascota] = useState<string | null>(null);
 
-  const cliente = getClienteById(id!);
-  const mascotas = getMascotasByClienteId(id!);
-  const itemsPago = getItemsPagoByClienteId(id!);
+   // Estados para pagos
+   const [isPagoFormOpen, setIsPagoFormOpen] = useState(false);
+   const [isPagoParcialFormOpen, setIsPagoParcialFormOpen] = useState(false);
+   const [editingPago, setEditingPago] = useState<ItemPago | null>(null);
+   const [selectedPagoForPayment, setSelectedPagoForPayment] =
+      useState<ItemPago | null>(null);
 
-  const handleEditCliente = (data: ClienteFormValues) => {
-    updateCliente(id!, data);
-    toast.success('Cliente actualizado exitosamente');
-  };
+   // Estados para recordatorios
+   const [isRecordatorioFormOpen, setIsRecordatorioFormOpen] = useState(false);
+   const [isReprogramarDialogOpen, setIsReprogramarDialogOpen] = useState(false);
+   const [selectedRecordatorio, setSelectedRecordatorio] = useState<Recordatorio | null>(null);
 
-  const handleDeleteCliente = () => {
-    deleteCliente(id!);
-    toast.success('Cliente eliminado exitosamente');
-    navigate('/clientes');
-  };
+   const cliente = getClienteById(id!);
+   const mascotas = getMascotasByClienteId(id!);
+   const itemsPago = getItemsPagoByClienteId(id!);
+   const recordatorios = getRecordatoriosByClienteId(id!);
 
-  const handleCreateMascota = (data: MascotaFormValues) => {
-    const nuevaMascota = {
-      id: crypto.randomUUID(),
-      clienteId: id!,
-      ...data,
-    };
-    addMascota(nuevaMascota);
-    toast.success('Mascota creada exitosamente');
-  };
+   const handleEditCliente = (data: ClienteFormValues) => {
+      updateCliente(id!, data);
+      toast.success("Cliente actualizado exitosamente");
+   };
 
-  const handleEditMascota = (data: MascotaFormValues) => {
-    if (editingMascota) {
-      updateMascota(editingMascota, data);
-      toast.success('Mascota actualizada exitosamente');
-      setEditingMascota(null);
-    }
-  };
+   const handleDeleteCliente = () => {
+      deleteCliente(id!);
+      toast.success("Cliente eliminado exitosamente");
+      navigate("/clientes");
+   };
 
-  const handleDeleteMascota = (mascotaId: string, nombreMascota: string) => {
-    if (confirm(`¿Estás seguro de eliminar a ${nombreMascota}?`)) {
-      deleteMascota(mascotaId);
-      toast.success('Mascota eliminada exitosamente');
-    }
-  };
+   const handleCreateMascota = (data: MascotaFormValues) => {
+      const nuevaMascota = {
+         id: crypto.randomUUID(),
+         clienteId: id!,
+         ...data,
+      };
+      addMascota(nuevaMascota);
+      toast.success("Mascota creada exitosamente");
+   };
 
-  const openEditMascota = (mascotaId: string) => {
-    setEditingMascota(mascotaId);
-    setIsMascotaFormOpen(true);
-  };
+   const handleEditMascota = (data: MascotaFormValues) => {
+      if (editingMascota) {
+         updateMascota(editingMascota, data);
+         toast.success("Mascota actualizada exitosamente");
+         setEditingMascota(null);
+      }
+   };
 
-  const mascotaToEdit = editingMascota ? mascotas.find(m => m.id === editingMascota) : undefined;
+   const handleDeleteMascota = (mascotaId: string, nombreMascota: string) => {
+      if (confirm(`¿Estás seguro de eliminar a ${nombreMascota}?`)) {
+         deleteMascota(mascotaId);
+         toast.success("Mascota eliminada exitosamente");
+      }
+   };
 
-  if (!cliente) {
-    return (
-      <div>
-        <Button variant="ghost" asChild className="mb-4">
-          <Link to="/clientes">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver
-          </Link>
-        </Button>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">Cliente no encontrado</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+   const openEditMascota = (mascotaId: string) => {
+      setEditingMascota(mascotaId);
+      setIsMascotaFormOpen(true);
+   };
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <Button variant="ghost" asChild>
-          <Link to="/clientes">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver a Clientes
-          </Link>
-        </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsEditFormOpen(true)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-          <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Eliminar
-          </Button>
-        </div>
-      </div>
+   const mascotaToEdit = editingMascota
+      ? mascotas.find((m) => m.id === editingMascota)
+      : undefined;
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Información del Cliente */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              {cliente.nombre} {cliente.apellido}
-            </CardTitle>
-            <CardDescription>
-              Cliente desde {cliente.fechaRegistro.toLocaleDateString()}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{cliente.telefono}</span>
-            </div>
-            {cliente.email && (
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{cliente.email}</span>
-              </div>
-            )}
-            {cliente.direccion && (
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{cliente.direccion}</span>
-              </div>
-            )}
-            {cliente.dniCuit && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">DNI/CUIT:</span>
-                <span>{cliente.dniCuit}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+   // ============================================
+   // HANDLERS - PAGOS
+   // ============================================
 
-        {/* Estado de Cuenta */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Estado de Cuenta
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total items:</span>
-                <span className="font-medium">{itemsPago.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Pendientes:</span>
-                <span className="font-medium">
-                  {itemsPago.filter((i) => i.estado !== 'Pagado').length}
-                </span>
-              </div>
-              <div className="border-t pt-2 mt-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Saldo:</span>
-                  <span className={`font-bold text-lg ${cliente.saldoPendiente > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                    ${cliente.saldoPendiente.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+   const handleCreatePago = () => {
+      setEditingPago(null);
+      setIsPagoFormOpen(true);
+   };
 
-      {/* Mascotas */}
-      <Card className="mt-6">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Mascotas</CardTitle>
-              <CardDescription>{mascotas.length} mascota{mascotas.length !== 1 ? 's' : ''} registrada{mascotas.length !== 1 ? 's' : ''}</CardDescription>
-            </div>
-            <Button onClick={() => {
-              setEditingMascota(null);
-              setIsMascotaFormOpen(true);
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva Mascota
+   const handleEditPago = (pago: ItemPago) => {
+      setEditingPago(pago);
+      setIsPagoFormOpen(true);
+   };
+
+   const handleDeletePago = (pagoId: string, descripcion: string) => {
+      if (confirm(`¿Estás seguro de eliminar el pago "${descripcion}"?`)) {
+         deleteItemPago(pagoId);
+         toast.success("Pago eliminado exitosamente");
+      }
+   };
+
+   const handleRegistrarPago = (pago: ItemPago) => {
+      setSelectedPagoForPayment(pago);
+      setIsPagoParcialFormOpen(true);
+   };
+
+   const handlePagoSubmit = (data: ItemPagoFormValues) => {
+      if (editingPago) {
+         updateItemPago(editingPago.id, {
+            descripcion: data.descripcion,
+            monto: data.monto,
+            fecha: data.fecha,
+         });
+         toast.success("Pago actualizado exitosamente");
+      } else {
+         const entregaInicial = data.entregaInicial || 0;
+         const montoPagado = Math.min(entregaInicial, data.monto); // No puede pagar más del monto total
+
+         // Determinar estado inicial
+         let estadoInicial: "Pendiente" | "Pagado Parcial" | "Pagado" =
+            "Pendiente";
+         if (montoPagado >= data.monto) {
+            estadoInicial = "Pagado";
+         } else if (montoPagado > 0) {
+            estadoInicial = "Pagado Parcial";
+         }
+
+         // Crear pago parcial si hay entrega inicial
+         const pagosParciales =
+            montoPagado > 0
+               ? [
+                    {
+                       id: crypto.randomUUID(),
+                       monto: montoPagado,
+                       fecha: data.fecha,
+                       notas: "Pago inicial",
+                    },
+                 ]
+               : [];
+
+         const nuevoPago: ItemPago = {
+            id: crypto.randomUUID(),
+            clienteId: id!,
+            descripcion: data.descripcion,
+            monto: data.monto,
+            fecha: data.fecha,
+            estado: estadoInicial,
+            montoPagado,
+            pagosParciales,
+         };
+         addItemPago(nuevoPago);
+         toast.success(
+            montoPagado > 0
+               ? "Pago creado y entrega inicial registrada"
+               : "Pago creado exitosamente",
+         );
+      }
+   };
+
+   const handlePagoParcialSubmit = (data: PagoParcialFormValues) => {
+      if (selectedPagoForPayment) {
+         registrarPagoParcial(
+            selectedPagoForPayment.id,
+            data.monto,
+            data.notas,
+         );
+         toast.success("Pago registrado exitosamente");
+      }
+   };
+
+   // ============================================
+   // HANDLERS - RECORDATORIOS
+   // ============================================
+
+   const handleCreateRecordatorio = () => {
+      setIsRecordatorioFormOpen(true);
+   };
+
+   const handleRecordatorioSubmit = (data: RecordatorioFormValues) => {
+      const mascota = mascotas.find((m) => m.id === data.mascotaId);
+      if (!mascota) return;
+
+      const nuevoRecordatorio: Recordatorio = {
+         id: crypto.randomUUID(),
+         mascotaId: data.mascotaId,
+         clienteId: id!,
+         titulo: data.titulo,
+         descripcion: data.descripcion,
+         fechaRecordatorio: data.fechaRecordatorio,
+         estado: "Pendiente",
+         esRecurrente: false,
+         fechaCreacion: new Date(),
+      };
+
+      addRecordatorio(nuevoRecordatorio);
+      toast.success("Recordatorio creado exitosamente");
+   };
+
+   const handleReprogramar = (recordatorio: Recordatorio) => {
+      setSelectedRecordatorio(recordatorio);
+      setIsReprogramarDialogOpen(true);
+   };
+
+   const handleReprogramarSubmit = (data: ReprogramarRecordatorioFormValues) => {
+      if (selectedRecordatorio) {
+         reprogramarRecordatorio(
+            selectedRecordatorio.id,
+            data.fechaRecordatorio,
+            data.notasReprogramacion,
+         );
+         toast.success("Recordatorio reprogramado exitosamente");
+      }
+   };
+
+   const handleCompletar = (recordatorioId: string) => {
+      completarRecordatorio(recordatorioId);
+      toast.success("Recordatorio marcado como completado");
+   };
+
+   const handleCancelar = (recordatorioId: string) => {
+      if (confirm("¿Estás seguro de cancelar este recordatorio?")) {
+         cancelarRecordatorio(recordatorioId);
+         toast.success("Recordatorio cancelado");
+      }
+   };
+
+   const handleDeleteRecordatorio = (recordatorioId: string, titulo: string) => {
+      if (confirm(`¿Estás seguro de eliminar el recordatorio "${titulo}"?`)) {
+         deleteRecordatorio(recordatorioId);
+         toast.success("Recordatorio eliminado");
+      }
+   };
+
+   if (!cliente) {
+      return (
+         <div>
+            <Button variant='ghost' asChild className='mb-4'>
+               <Link to='/clientes'>
+                  <ArrowLeft className='mr-2 h-4 w-4' />
+                  Volver
+               </Link>
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {mascotas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay mascotas registradas</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Especie</TableHead>
-                  <TableHead>Raza</TableHead>
-                  <TableHead>Edad</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mascotas.map((mascota) => (
-                  <TableRow key={mascota.id}>
-                    <TableCell className="font-medium">{mascota.nombre}</TableCell>
-                    <TableCell>{mascota.especie}</TableCell>
-                    <TableCell>{mascota.raza}</TableCell>
-                    <TableCell>{mascota.edad || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={mascota.estado === 'Activo' ? 'default' : 'secondary'}>
-                        {mascota.estado}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/mascotas/${mascota.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditMascota(mascota.id)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteMascota(mascota.id, mascota.nombre)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            <Card>
+               <CardContent className='pt-6'>
+                  <p className='text-muted-foreground'>Cliente no encontrado</p>
+               </CardContent>
+            </Card>
+         </div>
+      );
+   }
 
-      {/* Historial de Pagos */}
-      {itemsPago.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Historial de Pagos</CardTitle>
-            <CardDescription>Registro de cargos y pagos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead>Pagado</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itemsPago.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.fecha.toLocaleDateString()}</TableCell>
-                    <TableCell>{item.descripcion}</TableCell>
-                    <TableCell>${item.monto.toLocaleString()}</TableCell>
-                    <TableCell>${item.montoPagado.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          item.estado === 'Pagado'
-                            ? 'default'
-                            : item.estado === 'Pagado Parcial'
-                            ? 'secondary'
-                            : 'destructive'
-                        }
-                      >
-                        {item.estado}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+   return (
+      <div>
+         <div className='flex justify-between items-center mb-4'>
+            <Button variant='ghost' asChild>
+               <Link to='/clientes'>
+                  <ArrowLeft className='mr-2 h-4 w-4' />
+                  Volver a Clientes
+               </Link>
+            </Button>
+            <div className='flex gap-2'>
+               <Button
+                  variant='outline'
+                  onClick={() => setIsEditFormOpen(true)}
+               >
+                  <Edit className='mr-2 h-4 w-4' />
+                  Editar
+               </Button>
+               <Button
+                  variant='destructive'
+                  onClick={() => setIsDeleteDialogOpen(true)}
+               >
+                  <Trash2 className='mr-2 h-4 w-4' />
+                  Eliminar
+               </Button>
+            </div>
+         </div>
 
-      {/* Formulario de Edición Cliente */}
-      <ClienteForm
-        open={isEditFormOpen}
-        onOpenChange={setIsEditFormOpen}
-        onSubmit={handleEditCliente}
-        initialData={cliente}
-        mode="edit"
-      />
+         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+            {/* Información del Cliente */}
+            <Card className='lg:col-span-2'>
+               <CardHeader>
+                  <CardTitle className='text-2xl'>
+                     {cliente.nombre} {cliente.apellido}
+                  </CardTitle>
+                  <CardDescription>
+                     Cliente desde {cliente.fechaRegistro.toLocaleDateString()}
+                  </CardDescription>
+               </CardHeader>
+               <CardContent className='space-y-4'>
+                  <div className='flex items-center gap-2 text-sm'>
+                     <Phone className='h-4 w-4 text-muted-foreground' />
+                     <span>{cliente.telefono}</span>
+                  </div>
+                  {cliente.email && (
+                     <div className='flex items-center gap-2 text-sm'>
+                        <Mail className='h-4 w-4 text-muted-foreground' />
+                        <span>{cliente.email}</span>
+                     </div>
+                  )}
+                  {cliente.direccion && (
+                     <div className='flex items-center gap-2 text-sm'>
+                        <MapPin className='h-4 w-4 text-muted-foreground' />
+                        <span>{cliente.direccion}</span>
+                     </div>
+                  )}
+                  {cliente.dniCuit && (
+                     <div className='flex items-center gap-2 text-sm'>
+                        <span className='text-muted-foreground'>DNI/CUIT:</span>
+                        <span>{cliente.dniCuit}</span>
+                     </div>
+                  )}
+               </CardContent>
+            </Card>
 
-      {/* Formulario de Crear/Editar Mascota */}
-      <MascotaForm
-        open={isMascotaFormOpen}
-        onOpenChange={(open) => {
-          setIsMascotaFormOpen(open);
-          if (!open) setEditingMascota(null);
-        }}
-        onSubmit={editingMascota ? handleEditMascota : handleCreateMascota}
-        initialData={mascotaToEdit}
-        mode={editingMascota ? 'edit' : 'create'}
-      />
+            {/* Estado de Cuenta */}
+            <Card>
+               <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                     <CreditCard className='h-5 w-5' />
+                     Estado de Cuenta
+                  </CardTitle>
+               </CardHeader>
+               <CardContent>
+                  <div className='space-y-2'>
+                     <div className='flex justify-between items-center'>
+                        <span className='text-sm text-muted-foreground'>
+                           Total items:
+                        </span>
+                        <span className='font-medium'>{itemsPago.length}</span>
+                     </div>
+                     <div className='flex justify-between items-center'>
+                        <span className='text-sm text-muted-foreground'>
+                           Pendientes:
+                        </span>
+                        <span className='font-medium'>
+                           {
+                              itemsPago.filter((i) => i.estado !== "Pagado")
+                                 .length
+                           }
+                        </span>
+                     </div>
+                     <div className='border-t pt-2 mt-2'>
+                        <div className='flex justify-between items-center'>
+                           <span className='font-medium'>Saldo:</span>
+                           <span
+                              className={`font-bold text-lg ${cliente.saldoPendiente > 0 ? "text-destructive" : "text-green-600"}`}
+                           >
+                              ${cliente.saldoPendiente.toLocaleString()}
+                           </span>
+                        </div>
+                     </div>
+                  </div>
+               </CardContent>
+            </Card>
+         </div>
 
-      {/* Diálogo de Confirmación de Eliminación */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el cliente{' '}
-              <span className="font-semibold">
-                {cliente.nombre} {cliente.apellido}
-              </span>
-              {mascotas.length > 0 && (
-                <span>
-                  {' '}
-                  y todas sus mascotas ({mascotas.length} mascota{mascotas.length !== 1 ? 's' : ''})
-                </span>
-              )}
-              .
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCliente} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
+         {/* Mascotas */}
+         <Card className='mt-6'>
+            <CardHeader>
+               <div className='flex justify-between items-center'>
+                  <div>
+                     <CardTitle>Mascotas</CardTitle>
+                     <CardDescription>
+                        {mascotas.length} mascota
+                        {mascotas.length !== 1 ? "s" : ""} registrada
+                        {mascotas.length !== 1 ? "s" : ""}
+                     </CardDescription>
+                  </div>
+                  <Button
+                     onClick={() => {
+                        setEditingMascota(null);
+                        setIsMascotaFormOpen(true);
+                     }}
+                  >
+                     <Plus className='mr-2 h-4 w-4' />
+                     Nueva Mascota
+                  </Button>
+               </div>
+            </CardHeader>
+            <CardContent>
+               {mascotas.length === 0 ? (
+                  <p className='text-sm text-muted-foreground'>
+                     No hay mascotas registradas
+                  </p>
+               ) : (
+                  <Table>
+                     <TableHeader>
+                        <TableRow>
+                           <TableHead>Nombre</TableHead>
+                           <TableHead>Especie</TableHead>
+                           <TableHead>Raza</TableHead>
+                           <TableHead>Edad</TableHead>
+                           <TableHead>Estado</TableHead>
+                           <TableHead className='text-right'>
+                              Acciones
+                           </TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {mascotas.map((mascota) => (
+                           <TableRow key={mascota.id}>
+                              <TableCell className='font-medium'>
+                                 {mascota.nombre}
+                              </TableCell>
+                              <TableCell>{mascota.especie}</TableCell>
+                              <TableCell>{mascota.raza}</TableCell>
+                              <TableCell>{mascota.edad || "-"}</TableCell>
+                              <TableCell>
+                                 <Badge
+                                    variant={
+                                       mascota.estado === "Activo"
+                                          ? "default"
+                                          : "secondary"
+                                    }
+                                 >
+                                    {mascota.estado}
+                                 </Badge>
+                              </TableCell>
+                              <TableCell className='text-right'>
+                                 <div className='flex justify-end gap-2'>
+                                    <Button
+                                       variant='ghost'
+                                       size='sm'
+                                       asChild
+                                       title='Ver historia clínica'
+                                    >
+                                       <Link to={`/mascotas/${mascota.id}`}>
+                                          <Eye className='h-4 w-4' />
+                                       </Link>
+                                    </Button>
+                                    <Button
+                                       variant='ghost'
+                                       size='sm'
+                                       title='Editar mascota'
+                                       onClick={() =>
+                                          openEditMascota(mascota.id)
+                                       }
+                                    >
+                                       <Edit className='h-4 w-4' />
+                                    </Button>
+                                    <Button
+                                       variant='ghost'
+                                       size='sm'
+                                       title='Eliminar mascota'
+                                       onClick={() =>
+                                          handleDeleteMascota(
+                                             mascota.id,
+                                             mascota.nombre,
+                                          )
+                                       }
+                                    >
+                                       <Trash2 className='h-4 w-4 text-destructive' />
+                                    </Button>
+                                 </div>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               )}
+            </CardContent>
+         </Card>
+
+         {/* Historial de Pagos */}
+         <Card className='mt-6'>
+            <CardHeader>
+               <div className='flex justify-between items-center'>
+                  <div>
+                     <CardTitle>Historial de Pagos</CardTitle>
+                     <CardDescription>
+                        Registro de cargos y pagos
+                     </CardDescription>
+                  </div>
+                  <Button onClick={handleCreatePago}>
+                     <Plus className='mr-2 h-4 w-4' />
+                     Nuevo Pago
+                  </Button>
+               </div>
+            </CardHeader>
+            <CardContent>
+               {itemsPago.length === 0 ? (
+                  <p className='text-sm text-muted-foreground'>
+                     No hay pagos registrados
+                  </p>
+               ) : (
+                  <Table>
+                     <TableHeader>
+                        <TableRow>
+                           <TableHead>Fecha</TableHead>
+                           <TableHead>Descripción</TableHead>
+                           <TableHead className='text-right'>Monto</TableHead>
+                           <TableHead className='text-right'>Pagado</TableHead>
+                           <TableHead className='text-right'>
+                              Pendiente
+                           </TableHead>
+                           <TableHead>Estado</TableHead>
+                           <TableHead className='text-right'>
+                              Acciones
+                           </TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {itemsPago.map((item) => {
+                           const pendiente = item.monto - item.montoPagado;
+                           return (
+                              <TableRow key={item.id}>
+                                 <TableCell>
+                                    {format(item.fecha, "dd/MM/yyyy", {
+                                       locale: es,
+                                    })}
+                                 </TableCell>
+                                 <TableCell>{item.descripcion}</TableCell>
+                                 <TableCell className='text-right'>
+                                    ${Math.round(item.monto).toLocaleString()}
+                                 </TableCell>
+                                 <TableCell className='text-right text-green-600'>
+                                    $
+                                    {Math.round(
+                                       item.montoPagado,
+                                    ).toLocaleString()}
+                                 </TableCell>
+                                 <TableCell className='text-right font-bold text-destructive'>
+                                    ${Math.round(pendiente).toLocaleString()}
+                                 </TableCell>
+                                 <TableCell>
+                                    <Badge
+                                       variant={
+                                          item.estado === "Pagado"
+                                             ? "default"
+                                             : item.estado === "Pagado Parcial"
+                                               ? "secondary"
+                                               : "destructive"
+                                       }
+                                    >
+                                       {item.estado}
+                                    </Badge>
+                                 </TableCell>
+                                 <TableCell className='text-right'>
+                                    <div className='flex justify-end gap-2'>
+                                       {item.estado !== "Pagado" && (
+                                          <Button
+                                             variant='ghost'
+                                             size='sm'
+                                             onClick={() =>
+                                                handleRegistrarPago(item)
+                                             }
+                                             title='Registrar pago'
+                                          >
+                                             <CreditCard className='h-4 w-4' />
+                                          </Button>
+                                       )}
+                                       <Button
+                                          variant='ghost'
+                                          size='sm'
+                                          onClick={() => handleEditPago(item)}
+                                          title='Editar'
+                                       >
+                                          <Edit className='h-4 w-4' />
+                                       </Button>
+                                       <Button
+                                          variant='ghost'
+                                          size='sm'
+                                          onClick={() =>
+                                             handleDeletePago(
+                                                item.id,
+                                                item.descripcion,
+                                             )
+                                          }
+                                          title='Eliminar'
+                                       >
+                                          <Trash2 className='h-4 w-4 text-destructive' />
+                                       </Button>
+                                    </div>
+                                 </TableCell>
+                              </TableRow>
+                           );
+                        })}
+                     </TableBody>
+                  </Table>
+               )}
+            </CardContent>
+         </Card>
+
+         {/* Recordatorios */}
+         <Card className='mt-6'>
+            <CardHeader>
+               <div className='flex justify-between items-center'>
+                  <div>
+                     <CardTitle className='flex items-center gap-2'>
+                        <Bell className='h-5 w-5' />
+                        Recordatorios
+                     </CardTitle>
+                     <CardDescription>
+                        Seguimientos y alertas programadas
+                     </CardDescription>
+                  </div>
+                  <Button onClick={handleCreateRecordatorio}>
+                     <Plus className='mr-2 h-4 w-4' />
+                     Nuevo Recordatorio
+                  </Button>
+               </div>
+            </CardHeader>
+            <CardContent>
+               {recordatorios.length === 0 ? (
+                  <p className='text-sm text-muted-foreground'>
+                     No hay recordatorios registrados
+                  </p>
+               ) : (
+                  <Table>
+                     <TableHeader>
+                        <TableRow>
+                           <TableHead>Fecha</TableHead>
+                           <TableHead>Mascota</TableHead>
+                           <TableHead>Título</TableHead>
+                           <TableHead>Estado</TableHead>
+                           <TableHead className='text-right'>Acciones</TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {recordatorios
+                           .sort(
+                              (a, b) =>
+                                 a.fechaRecordatorio.getTime() -
+                                 b.fechaRecordatorio.getTime(),
+                           )
+                           .map((recordatorio) => {
+                              const mascota = mascotas.find(
+                                 (m) => m.id === recordatorio.mascotaId,
+                              );
+                              const hoy = new Date();
+                              hoy.setHours(0, 0, 0, 0);
+                              const fechaRec = new Date(
+                                 recordatorio.fechaRecordatorio,
+                              );
+                              fechaRec.setHours(0, 0, 0, 0);
+                              const diasDiferencia = Math.ceil(
+                                 (fechaRec.getTime() - hoy.getTime()) /
+                                    (1000 * 60 * 60 * 24),
+                              );
+
+                              return (
+                                 <TableRow key={recordatorio.id}>
+                                    <TableCell>
+                                       <div>
+                                          <p className='font-medium'>
+                                             {format(
+                                                recordatorio.fechaRecordatorio,
+                                                "dd/MM/yyyy",
+                                                { locale: es },
+                                             )}
+                                          </p>
+                                          {recordatorio.estado !== "Completado" &&
+                                             recordatorio.estado !==
+                                                "Cancelado" && (
+                                                <p className='text-xs text-muted-foreground'>
+                                                   {diasDiferencia === 0
+                                                      ? "Hoy"
+                                                      : diasDiferencia === 1
+                                                        ? "Mañana"
+                                                        : diasDiferencia > 0
+                                                          ? `En ${diasDiferencia} días`
+                                                          : `Atrasado ${Math.abs(diasDiferencia)} días`}
+                                                </p>
+                                             )}
+                                       </div>
+                                    </TableCell>
+                                    <TableCell>
+                                       {mascota ? mascota.nombre : "Desconocida"}
+                                    </TableCell>
+                                    <TableCell>
+                                       <div>
+                                          <p className='font-medium'>
+                                             {recordatorio.titulo}
+                                          </p>
+                                          {recordatorio.descripcion && (
+                                             <p className='text-xs text-muted-foreground'>
+                                                {recordatorio.descripcion}
+                                             </p>
+                                          )}
+                                       </div>
+                                    </TableCell>
+                                    <TableCell>
+                                       <Badge
+                                          variant={
+                                             recordatorio.estado === "Completado"
+                                                ? "default"
+                                                : recordatorio.estado ===
+                                                    "Reprogramado"
+                                                  ? "secondary"
+                                                  : recordatorio.estado ===
+                                                      "Cancelado"
+                                                    ? "outline"
+                                                    : "destructive"
+                                          }
+                                       >
+                                          {recordatorio.estado}
+                                       </Badge>
+                                    </TableCell>
+                                    <TableCell className='text-right'>
+                                       <div className='flex justify-end gap-2'>
+                                          {recordatorio.estado !== "Completado" &&
+                                             recordatorio.estado !==
+                                                "Cancelado" && (
+                                                <>
+                                                   <Button
+                                                      variant='ghost'
+                                                      size='sm'
+                                                      onClick={() =>
+                                                         handleCompletar(
+                                                            recordatorio.id,
+                                                         )
+                                                      }
+                                                      title='Marcar como completado'
+                                                   >
+                                                      <CheckCircle className='h-4 w-4 text-green-600' />
+                                                   </Button>
+                                                   <Button
+                                                      variant='ghost'
+                                                      size='sm'
+                                                      onClick={() =>
+                                                         handleReprogramar(
+                                                            recordatorio,
+                                                         )
+                                                      }
+                                                      title='Reprogramar'
+                                                   >
+                                                      <CalendarIcon className='h-4 w-4' />
+                                                   </Button>
+                                                   <Button
+                                                      variant='ghost'
+                                                      size='sm'
+                                                      onClick={() =>
+                                                         handleCancelar(
+                                                            recordatorio.id,
+                                                         )
+                                                      }
+                                                      title='Cancelar'
+                                                   >
+                                                      <XCircle className='h-4 w-4' />
+                                                   </Button>
+                                                </>
+                                             )}
+                                          <Button
+                                             variant='ghost'
+                                             size='sm'
+                                             onClick={() =>
+                                                handleDeleteRecordatorio(
+                                                   recordatorio.id,
+                                                   recordatorio.titulo,
+                                                )
+                                             }
+                                             title='Eliminar'
+                                          >
+                                             <Trash2 className='h-4 w-4 text-destructive' />
+                                          </Button>
+                                       </div>
+                                    </TableCell>
+                                 </TableRow>
+                              );
+                           })}
+                     </TableBody>
+                  </Table>
+               )}
+            </CardContent>
+         </Card>
+
+         {/* Formulario de Edición Cliente */}
+         <ClienteForm
+            open={isEditFormOpen}
+            onOpenChange={setIsEditFormOpen}
+            onSubmit={handleEditCliente}
+            initialData={cliente}
+            mode='edit'
+         />
+
+         {/* Formulario de Crear/Editar Mascota */}
+         <MascotaForm
+            open={isMascotaFormOpen}
+            onOpenChange={(open) => {
+               setIsMascotaFormOpen(open);
+               if (!open) setEditingMascota(null);
+            }}
+            onSubmit={editingMascota ? handleEditMascota : handleCreateMascota}
+            initialData={mascotaToEdit}
+            mode={editingMascota ? "edit" : "create"}
+         />
+
+         {/* Formulario de Pago */}
+         <PagoItemForm
+            open={isPagoFormOpen}
+            onOpenChange={(open) => {
+               setIsPagoFormOpen(open);
+               if (!open) setEditingPago(null);
+            }}
+            onSubmit={handlePagoSubmit}
+            initialData={editingPago || undefined}
+            mode={editingPago ? "edit" : "create"}
+            clienteId={id}
+         />
+
+         {/* Formulario de Pago Parcial */}
+         <PagoParcialForm
+            open={isPagoParcialFormOpen}
+            onOpenChange={(open) => {
+               setIsPagoParcialFormOpen(open);
+               if (!open) setSelectedPagoForPayment(null);
+            }}
+            onSubmit={handlePagoParcialSubmit}
+            itemPago={selectedPagoForPayment}
+         />
+
+         {/* Formulario de Recordatorio */}
+         <RecordatorioForm
+            open={isRecordatorioFormOpen}
+            onOpenChange={setIsRecordatorioFormOpen}
+            onSubmit={handleRecordatorioSubmit}
+            clienteId={id!}
+         />
+
+         {/* Diálogo de Reprogramar Recordatorio */}
+         <ReprogramarDialog
+            open={isReprogramarDialogOpen}
+            onOpenChange={setIsReprogramarDialogOpen}
+            onSubmit={handleReprogramarSubmit}
+            recordatorio={selectedRecordatorio}
+         />
+
+         {/* Diálogo de Confirmación de Eliminación */}
+         <AlertDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+         >
+            <AlertDialogContent>
+               <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                     Esta acción no se puede deshacer. Se eliminará
+                     permanentemente el cliente{" "}
+                     <span className='font-semibold'>
+                        {cliente.nombre} {cliente.apellido}
+                     </span>
+                     {mascotas.length > 0 && (
+                        <span>
+                           {" "}
+                           y todas sus mascotas ({mascotas.length} mascota
+                           {mascotas.length !== 1 ? "s" : ""})
+                        </span>
+                     )}
+                     .
+                  </AlertDialogDescription>
+               </AlertDialogHeader>
+               <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                     onClick={handleDeleteCliente}
+                     className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  >
+                     Eliminar
+                  </AlertDialogAction>
+               </AlertDialogFooter>
+            </AlertDialogContent>
+         </AlertDialog>
+      </div>
+   );
 }

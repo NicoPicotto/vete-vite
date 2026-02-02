@@ -196,6 +196,21 @@ export function addItemPago(item: ItemPago): void {
   saveItemsPago(items);
 }
 
+export function updateItemPago(id: string, updatedItem: Partial<ItemPago>): void {
+  const items = getItemsPago();
+  const index = items.findIndex((i) => i.id === id);
+  if (index !== -1) {
+    items[index] = { ...items[index], ...updatedItem };
+    saveItemsPago(items);
+  }
+}
+
+export function deleteItemPago(id: string): void {
+  const items = getItemsPago();
+  const filtered = items.filter((i) => i.id !== id);
+  saveItemsPago(filtered);
+}
+
 // ============================================
 // RECORDATORIOS
 // ============================================
@@ -212,6 +227,21 @@ export function addRecordatorio(recordatorio: Recordatorio): void {
   const recordatorios = getRecordatorios();
   recordatorios.push(recordatorio);
   saveRecordatorios(recordatorios);
+}
+
+export function updateRecordatorio(id: string, updatedRecordatorio: Partial<Recordatorio>): void {
+  const recordatorios = getRecordatorios();
+  const index = recordatorios.findIndex((r) => r.id === id);
+  if (index !== -1) {
+    recordatorios[index] = { ...recordatorios[index], ...updatedRecordatorio };
+    saveRecordatorios(recordatorios);
+  }
+}
+
+export function deleteRecordatorio(id: string): void {
+  const recordatorios = getRecordatorios();
+  const filtered = recordatorios.filter((r) => r.id !== id);
+  saveRecordatorios(filtered);
 }
 
 // ============================================

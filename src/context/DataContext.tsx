@@ -22,7 +22,13 @@ import {
   updateHistoriaClinica as storageUpdateHistoriaClinica,
   deleteHistoriaClinica as storageDeleteHistoriaClinica,
   getItemsPago,
+  addItemPago as storageAddItemPago,
+  updateItemPago as storageUpdateItemPago,
+  deleteItemPago as storageDeleteItemPago,
   getRecordatorios,
+  addRecordatorio as storageAddRecordatorio,
+  updateRecordatorio as storageUpdateRecordatorio,
+  deleteRecordatorio as storageDeleteRecordatorio,
   initializeWithMockData,
 } from '@/lib/storage';
 
@@ -57,13 +63,27 @@ interface DataContextType {
   deleteHistoriaClinica: (id: string) => void;
   getHistoriaClinicaByMascotaId: (mascotaId: string) => HistoriaClinica[];
 
-  // Items Pago helpers
+  // Items Pago actions
+  addItemPago: (item: ItemPago) => void;
+  updateItemPago: (id: string, item: Partial<ItemPago>) => void;
+  deleteItemPago: (id: string) => void;
+  getItemPagoById: (id: string) => ItemPago | undefined;
   getItemsPagoByClienteId: (clienteId: string) => ItemPago[];
   getSaldoCliente: (clienteId: string) => number;
+  registrarPagoParcial: (itemId: string, monto: number, notas?: string) => void;
 
-  // Recordatorios helpers
+  // Recordatorios actions
+  addRecordatorio: (recordatorio: Recordatorio) => void;
+  updateRecordatorio: (id: string, recordatorio: Partial<Recordatorio>) => void;
+  deleteRecordatorio: (id: string) => void;
+  getRecordatorioById: (id: string) => Recordatorio | undefined;
   getRecordatoriosByClienteId: (clienteId: string) => Recordatorio[];
+  getRecordatoriosByMascotaId: (mascotaId: string) => Recordatorio[];
   getRecordatoriosPendientes: () => Recordatorio[];
+  getRecordatoriosProximos: (dias: number) => Recordatorio[];
+  reprogramarRecordatorio: (id: string, nuevaFecha: Date, notas?: string) => void;
+  completarRecordatorio: (id: string) => void;
+  cancelarRecordatorio: (id: string) => void;
 
   // Refresh data
   refreshData: () => void;
@@ -178,8 +198,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
-  // ITEMS PAGO HELPERS
+  // ITEMS PAGO ACTIONS
   // ============================================
+
+  const addItemPago = (item: ItemPago) => {
+    storageAddItemPago(item);
+    setItemsPago((prev) => [...prev, item]);
+  };
+
+  const updateItemPago = (id: string, updatedItem: Partial<ItemPago>) => {
+    storageUpdateItemPago(id, updatedItem);
+    setItemsPago((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, ...updatedItem } : i))
+    );
+  };
+
+  const deleteItemPago = (id: string) => {
+    storageDeleteItemPago(id);
+    setItemsPago((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  const getItemPagoById = (id: string) => {
+    return itemsPago.find((i) => i.id === id);
+  };
 
   const getItemsPagoByClienteId = (clienteId: string) => {
     return itemsPago.filter((i) => i.clienteId === clienteId);
@@ -192,18 +233,106 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }, 0);
   };
 
+  const registrarPagoParcial = (itemId: string, monto: number, notas?: string) => {
+    const item = getItemPagoById(itemId);
+    if (!item) return;
+
+    const nuevoPago = {
+      id: crypto.randomUUID(),
+      monto,
+      fecha: new Date(),
+      notas: notas || '',
+    };
+
+    const nuevoMontoPagado = item.montoPagado + monto;
+    const nuevosPagosParciales = [...item.pagosParciales, nuevoPago];
+
+    // Determinar nuevo estado
+    let nuevoEstado: 'Pendiente' | 'Pagado Parcial' | 'Pagado' = 'Pendiente';
+    if (nuevoMontoPagado >= item.monto) {
+      nuevoEstado = 'Pagado';
+    } else if (nuevoMontoPagado > 0) {
+      nuevoEstado = 'Pagado Parcial';
+    }
+
+    updateItemPago(itemId, {
+      montoPagado: nuevoMontoPagado,
+      pagosParciales: nuevosPagosParciales,
+      estado: nuevoEstado,
+    });
+  };
+
   // ============================================
-  // RECORDATORIOS HELPERS
+  // RECORDATORIOS ACTIONS
   // ============================================
+
+  const addRecordatorio = (recordatorio: Recordatorio) => {
+    storageAddRecordatorio(recordatorio);
+    setRecordatorios((prev) => [...prev, recordatorio]);
+  };
+
+  const updateRecordatorio = (id: string, updatedRecordatorio: Partial<Recordatorio>) => {
+    storageUpdateRecordatorio(id, updatedRecordatorio);
+    setRecordatorios((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updatedRecordatorio } : r))
+    );
+  };
+
+  const deleteRecordatorio = (id: string) => {
+    storageDeleteRecordatorio(id);
+    setRecordatorios((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const getRecordatorioById = (id: string) => {
+    return recordatorios.find((r) => r.id === id);
+  };
 
   const getRecordatoriosByClienteId = (clienteId: string) => {
     return recordatorios.filter((r) => r.clienteId === clienteId);
   };
 
+  const getRecordatoriosByMascotaId = (mascotaId: string) => {
+    return recordatorios.filter((r) => r.mascotaId === mascotaId);
+  };
+
   const getRecordatoriosPendientes = () => {
     return recordatorios
-      .filter((r) => r.estado === 'Pendiente')
+      .filter((r) => r.estado === 'Pendiente' || r.estado === 'Reprogramado')
       .sort((a, b) => a.fechaRecordatorio.getTime() - b.fechaRecordatorio.getTime());
+  };
+
+  const getRecordatoriosProximos = (dias: number) => {
+    const hoy = new Date();
+    const limite = new Date();
+    limite.setDate(hoy.getDate() + dias);
+
+    return recordatorios
+      .filter((r) => {
+        const esPendiente = r.estado === 'Pendiente' || r.estado === 'Reprogramado';
+        const dentroDelRango = r.fechaRecordatorio >= hoy && r.fechaRecordatorio <= limite;
+        return esPendiente && dentroDelRango;
+      })
+      .sort((a, b) => a.fechaRecordatorio.getTime() - b.fechaRecordatorio.getTime());
+  };
+
+  const reprogramarRecordatorio = (id: string, nuevaFecha: Date, notas?: string) => {
+    const recordatorio = getRecordatorioById(id);
+    if (!recordatorio) return;
+
+    updateRecordatorio(id, {
+      fechaRecordatorio: nuevaFecha,
+      estado: 'Reprogramado',
+      fechaOriginal: recordatorio.fechaOriginal || recordatorio.fechaRecordatorio,
+      notasReprogramacion: notas,
+    });
+  };
+
+  const completarRecordatorio = (id: string) => {
+    updateRecordatorio(id, { estado: 'Completado' });
+  };
+
+  const cancelarRecordatorio = (id: string) => {
+    updateRecordatorio(id, { estado: 'Cancelado' });
   };
 
   // ============================================
@@ -233,10 +362,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateHistoriaClinica,
     deleteHistoriaClinica,
     getHistoriaClinicaByMascotaId,
+    addItemPago,
+    updateItemPago,
+    deleteItemPago,
+    getItemPagoById,
     getItemsPagoByClienteId,
     getSaldoCliente,
+    registrarPagoParcial,
+    addRecordatorio,
+    updateRecordatorio,
+    deleteRecordatorio,
+    getRecordatorioById,
     getRecordatoriosByClienteId,
+    getRecordatoriosByMascotaId,
     getRecordatoriosPendientes,
+    getRecordatoriosProximos,
+    reprogramarRecordatorio,
+    completarRecordatorio,
+    cancelarRecordatorio,
     refreshData,
   };
 

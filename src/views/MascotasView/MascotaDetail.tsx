@@ -17,7 +17,7 @@ import {
 import { ArrowLeft, Plus, Calendar, User, Activity, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { HistoriaClinicaForm } from '@/components/historia/HistoriaClinicaForm';
+import { HistoriaClinicaForm, type RecordatorioData } from '@/components/historia/HistoriaClinicaForm';
 import type { HistoriaClinicaFormValues } from '@/lib/schemas';
 import type { HistoriaClinica } from '@/lib/types';
 import { toast } from 'sonner';
@@ -32,6 +32,7 @@ export default function MascotaDetail() {
     addHistoriaClinica,
     updateHistoriaClinica,
     deleteHistoriaClinica,
+    addRecordatorio,
   } = useData();
 
   const [isConsultaFormOpen, setIsConsultaFormOpen] = useState(false);
@@ -42,7 +43,7 @@ export default function MascotaDetail() {
   const cliente = mascota ? getClienteById(mascota.clienteId) : undefined;
   const historiaClinica = mascota ? getHistoriaClinicaByMascotaId(id!) : [];
 
-  const handleCreateConsulta = (data: HistoriaClinicaFormValues) => {
+  const handleCreateConsulta = (data: HistoriaClinicaFormValues, recordatorioData?: RecordatorioData) => {
     if (editingConsulta) {
       // Editar consulta existente
       updateHistoriaClinica(editingConsulta.id, data);
@@ -50,15 +51,35 @@ export default function MascotaDetail() {
       setEditingConsulta(undefined);
     } else {
       // Crear nueva consulta
+      const nuevaConsultaId = crypto.randomUUID();
       const nuevaConsulta = {
-        id: crypto.randomUUID(),
+        id: nuevaConsultaId,
         mascotaId: id!,
         fecha: new Date(),
         ...data,
         vacunasAplicadas: data.vacunasAplicadas || [],
       };
       addHistoriaClinica(nuevaConsulta);
-      toast.success('Consulta registrada exitosamente');
+
+      // Crear recordatorio si se proporcionó
+      if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
+        const nuevoRecordatorio = {
+          id: crypto.randomUUID(),
+          historiaClinicaId: nuevaConsultaId,
+          mascotaId: id!,
+          clienteId: mascota.clienteId,
+          titulo: recordatorioData.titulo,
+          descripcion: recordatorioData.descripcion,
+          fechaRecordatorio: recordatorioData.fechaRecordatorio,
+          esRecurrente: false,
+          estado: 'Pendiente' as const,
+          fechaCreacion: new Date(),
+        };
+        addRecordatorio(nuevoRecordatorio);
+        toast.success('Consulta y recordatorio creados exitosamente');
+      } else {
+        toast.success('Consulta registrada exitosamente');
+      }
     }
   };
 

@@ -116,3 +116,78 @@ export const historiaClinicaSchema = z.object({
 });
 
 export type HistoriaClinicaFormValues = z.infer<typeof historiaClinicaSchema>;
+
+// ============================================
+// ITEM PAGO SCHEMA
+// ============================================
+
+export const itemPagoSchema = z.object({
+  clienteId: z.string().min(1, 'Debes seleccionar un cliente'),
+  descripcion: z
+    .string()
+    .min(3, 'La descripción debe tener al menos 3 caracteres')
+    .max(500, 'La descripción no puede exceder 500 caracteres'),
+  monto: z
+    .number()
+    .positive('El monto debe ser positivo')
+    .max(999999999, 'El monto es excesivo'),
+  fecha: z.date(),
+  entregaInicial: z
+    .number()
+    .min(0, 'La entrega no puede ser negativa')
+    .max(999999999, 'El monto es excesivo')
+    .optional(),
+});
+
+export type ItemPagoFormValues = z.infer<typeof itemPagoSchema>;
+
+// ============================================
+// PAGO PARCIAL SCHEMA
+// ============================================
+
+export const pagoParcialSchema = z.object({
+  monto: z
+    .number()
+    .positive('El monto debe ser positivo')
+    .max(999999999, 'El monto es excesivo'),
+  fecha: z.date(),
+  notas: z
+    .string()
+    .max(500, 'Las notas no pueden exceder 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type PagoParcialFormValues = z.infer<typeof pagoParcialSchema>;
+
+// ============================================
+// RECORDATORIO SCHEMA
+// ============================================
+
+export const recordatorioSchema = z.object({
+  mascotaId: z.string().min(1, 'Debes seleccionar una mascota'),
+  titulo: z
+    .string()
+    .min(3, 'El título debe tener al menos 3 caracteres')
+    .max(200, 'El título no puede exceder 200 caracteres'),
+  descripcion: z
+    .string()
+    .max(1000, 'La descripción no puede exceder 1000 caracteres')
+    .optional()
+    .or(z.literal('')),
+  fechaRecordatorio: z.date(),
+});
+
+export type RecordatorioFormValues = z.infer<typeof recordatorioSchema>;
+
+// Schema para reprogramación
+export const reprogramarRecordatorioSchema = z.object({
+  fechaRecordatorio: z.date(),
+  notasReprogramacion: z
+    .string()
+    .max(500, 'Las notas no pueden exceder 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type ReprogramarRecordatorioFormValues = z.infer<typeof reprogramarRecordatorioSchema>;
