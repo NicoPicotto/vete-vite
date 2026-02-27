@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useData } from '@/context/DataContext';
+import { useMascota } from '@/hooks/useMascotas';
+import { useCliente } from '@/hooks/useClientes';
+import { useHistoriasClinicasByMascota, useCreateHistoriaClinica, useUpdateHistoriaClinica, useDeleteHistoriaClinica } from '@/hooks/useHistoriaClinica';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Plus, Calendar, User, Activity, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, User, Activity, Edit, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { HistoriaClinicaForm, type RecordatorioData } from '@/components/historia/HistoriaClinicaForm';
@@ -24,62 +27,62 @@ import { toast } from 'sonner';
 
 export default function MascotaDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const {
-    getMascotaById,
-    getClienteById,
-    getHistoriaClinicaByMascotaId,
-    addHistoriaClinica,
-    updateHistoriaClinica,
-    deleteHistoriaClinica,
-    addRecordatorio,
-  } = useData();
+
+  // TanStack Query hooks para datos desde Supabase
+  const { data: mascota, isLoading: isLoadingMascota, error: errorMascota } = useMascota(id!);
+  const { data: cliente } = useCliente(mascota?.clienteId || '');
+  const { data: historiaClinica = [], isLoading: isLoadingHistoria } = useHistoriasClinicasByMascota(id!);
+  const createHistoriaMutation = useCreateHistoriaClinica();
+  const updateHistoriaMutation = useUpdateHistoriaClinica();
+  const deleteHistoriaMutation = useDeleteHistoriaClinica();
+
+  // DataContext para recordatorios (aún no migrado)
+  const { addRecordatorio } = useData();
 
   const [isConsultaFormOpen, setIsConsultaFormOpen] = useState(false);
   const [editingConsulta, setEditingConsulta] = useState<HistoriaClinica | undefined>();
   const [deletingConsultaId, setDeletingConsultaId] = useState<string | null>(null);
 
-  const mascota = getMascotaById(id!);
-  const cliente = mascota ? getClienteById(mascota.clienteId) : undefined;
-  const historiaClinica = mascota ? getHistoriaClinicaByMascotaId(id!) : [];
-
   const handleCreateConsulta = (data: HistoriaClinicaFormValues, recordatorioData?: RecordatorioData) => {
     if (editingConsulta) {
       // Editar consulta existente
-      updateHistoriaClinica(editingConsulta.id, data);
-      toast.success('Consulta actualizada exitosamente');
-      setEditingConsulta(undefined);
+      updateHistoriaMutation.mutate(
+        { id: editingConsulta.id, data: { mascotaId: id!, ...data } },
+        {
+          onSuccess: () => {
+            setEditingConsulta(undefined);
+            setIsConsultaFormOpen(false);
+          },
+        }
+      );
     } else {
       // Crear nueva consulta
-      const nuevaConsultaId = crypto.randomUUID();
-      const nuevaConsulta = {
-        id: nuevaConsultaId,
-        mascotaId: id!,
-        fecha: new Date(),
-        ...data,
-        vacunasAplicadas: data.vacunasAplicadas || [],
-      };
-      addHistoriaClinica(nuevaConsulta);
+      createHistoriaMutation.mutate(
+        { mascotaId: id!, ...data },
+        {
+          onSuccess: (nuevaConsulta) => {
+            setIsConsultaFormOpen(false);
 
-      // Crear recordatorio si se proporcionó
-      if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
-        const nuevoRecordatorio = {
-          id: crypto.randomUUID(),
-          historiaClinicaId: nuevaConsultaId,
-          mascotaId: id!,
-          clienteId: mascota.clienteId,
-          titulo: recordatorioData.titulo,
-          descripcion: recordatorioData.descripcion,
-          fechaRecordatorio: recordatorioData.fechaRecordatorio,
-          esRecurrente: false,
-          estado: 'Pendiente' as const,
-          fechaCreacion: new Date(),
-        };
-        addRecordatorio(nuevoRecordatorio);
-        toast.success('Consulta y recordatorio creados exitosamente');
-      } else {
-        toast.success('Consulta registrada exitosamente');
-      }
+            // Crear recordatorio si se proporcionó
+            if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
+              const nuevoRecordatorio = {
+                id: crypto.randomUUID(),
+                historiaClinicaId: nuevaConsulta.id,
+                mascotaId: id!,
+                clienteId: mascota.clienteId,
+                titulo: recordatorioData.titulo,
+                descripcion: recordatorioData.descripcion,
+                fechaRecordatorio: recordatorioData.fechaRecordatorio,
+                esRecurrente: false,
+                estado: 'Pendiente' as const,
+                fechaCreacion: new Date(),
+              };
+              addRecordatorio(nuevoRecordatorio);
+              toast.success('Consulta y recordatorio creados exitosamente');
+            }
+          },
+        }
+      );
     }
   };
 
@@ -90,9 +93,11 @@ export default function MascotaDetail() {
 
   const handleDeleteConsulta = () => {
     if (deletingConsultaId) {
-      deleteHistoriaClinica(deletingConsultaId);
-      toast.success('Consulta eliminada');
-      setDeletingConsultaId(null);
+      deleteHistoriaMutation.mutate(deletingConsultaId, {
+        onSuccess: () => {
+          setDeletingConsultaId(null);
+        },
+      });
     }
   };
 
@@ -103,7 +108,30 @@ export default function MascotaDetail() {
     }
   };
 
-  if (!mascota || !cliente) {
+  // Mostrar loading
+  if (isLoadingMascota) {
+    return (
+      <div>
+        <Button variant="ghost" asChild className="mb-4">
+          <Link to="/mascotas">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver
+          </Link>
+        </Button>
+        <Card>
+          <CardContent className="pt-6 flex justify-center">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <p className="text-muted-foreground">Cargando mascota...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Mostrar error o mascota no encontrada
+  if (errorMascota || !mascota || !cliente) {
     return (
       <div>
         <Button variant="ghost" asChild className="mb-4">
@@ -114,7 +142,14 @@ export default function MascotaDetail() {
         </Button>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Mascota no encontrada</p>
+            <p className="text-destructive mb-2">
+              {errorMascota ? 'Error al cargar mascota' : 'Mascota no encontrada'}
+            </p>
+            {errorMascota && (
+              <p className="text-sm text-muted-foreground">
+                {(errorMascota as Error).message}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -210,11 +245,15 @@ export default function MascotaDetail() {
         <CardHeader>
           <CardTitle>Historia Clínica</CardTitle>
           <CardDescription>
-            Registro completo de consultas y tratamientos
+            {isLoadingHistoria ? 'Cargando...' : 'Registro completo de consultas y tratamientos'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {historiaClinica.length === 0 ? (
+          {isLoadingHistoria ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : historiaClinica.length === 0 ? (
             <div className="text-center py-12">
               <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">No hay consultas registradas</p>
@@ -225,10 +264,10 @@ export default function MascotaDetail() {
             </div>
           ) : (
             <div className="space-y-6">
-              {historiaClinica.map((consulta, index) => (
+              {historiaClinica.map((consulta) => (
                 <div key={consulta.id} className="relative pl-8 pb-6 border-l-2 border-muted last:border-l-0 last:pb-0">
                   {/* Timeline dot */}
-                  <div className="absolute left-0 top-0 -translate-x-[9px] w-4 h-4 rounded-full bg-primary border-4 border-background" />
+                  <div className="absolute left-0 top-0 -translate-x-2.25 w-4 h-4 rounded-full bg-primary border-4 border-background" />
 
                   <div className="flex justify-between items-start mb-2">
                     <div>

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
+import { useCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
+import { useMascotasByCliente, useCreateMascota, useUpdateMascota, useDeleteMascota } from "@/hooks/useMascotas";
 import {
    Card,
    CardContent,
@@ -42,6 +44,7 @@ import {
    Calendar as CalendarIcon,
    CheckCircle,
    XCircle,
+   Loader2,
 } from "lucide-react";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { MascotaForm } from "@/components/mascotas/MascotaForm";
@@ -65,15 +68,21 @@ import { es } from "date-fns/locale";
 export default function ClienteDetail() {
    const { id } = useParams<{ id: string }>();
    const navigate = useNavigate();
+
+   // TanStack Query hooks para cliente desde Supabase
+   const { data: cliente, isLoading: isLoadingCliente, error: errorCliente } = useCliente(id!);
+   const updateClienteMutation = useUpdateCliente();
+   const deleteClienteMutation = useDeleteCliente();
+
+   // TanStack Query hooks para mascotas desde Supabase
+   const { data: mascotas = [], isLoading: isLoadingMascotas } = useMascotasByCliente(id!);
+   const createMascotaMutation = useCreateMascota();
+   const updateMascotaMutation = useUpdateMascota();
+   const deleteMascotaMutation = useDeleteMascota();
+
+   // DataContext para datos que aún no migramos (pagos, recordatorios)
    const {
-      getClienteById,
-      getMascotasByClienteId,
       getItemsPagoByClienteId,
-      updateCliente,
-      deleteCliente,
-      addMascota,
-      updateMascota,
-      deleteMascota,
       addItemPago,
       updateItemPago,
       deleteItemPago,
@@ -103,44 +112,58 @@ export default function ClienteDetail() {
    const [isReprogramarDialogOpen, setIsReprogramarDialogOpen] = useState(false);
    const [selectedRecordatorio, setSelectedRecordatorio] = useState<Recordatorio | null>(null);
 
-   const cliente = getClienteById(id!);
-   const mascotas = getMascotasByClienteId(id!);
+   // Obtener datos relacionados (aún desde DataContext hasta que los migremos)
    const itemsPago = getItemsPagoByClienteId(id!);
    const recordatorios = getRecordatoriosByClienteId(id!);
 
    const handleEditCliente = (data: ClienteFormValues) => {
-      updateCliente(id!, data);
-      toast.success("Cliente actualizado exitosamente");
+      updateClienteMutation.mutate(
+         { id: id!, data },
+         {
+            onSuccess: () => {
+               setIsEditFormOpen(false);
+            },
+         }
+      );
    };
 
    const handleDeleteCliente = () => {
-      deleteCliente(id!);
-      toast.success("Cliente eliminado exitosamente");
-      navigate("/clientes");
+      deleteClienteMutation.mutate(id!, {
+         onSuccess: () => {
+            navigate("/clientes");
+         },
+      });
    };
 
    const handleCreateMascota = (data: MascotaFormValues) => {
-      const nuevaMascota = {
-         id: crypto.randomUUID(),
+      const mascotaData = {
          clienteId: id!,
          ...data,
       };
-      addMascota(nuevaMascota);
-      toast.success("Mascota creada exitosamente");
+      createMascotaMutation.mutate(mascotaData, {
+         onSuccess: () => {
+            setIsMascotaFormOpen(false);
+         },
+      });
    };
 
    const handleEditMascota = (data: MascotaFormValues) => {
       if (editingMascota) {
-         updateMascota(editingMascota, data);
-         toast.success("Mascota actualizada exitosamente");
-         setEditingMascota(null);
+         updateMascotaMutation.mutate(
+            { id: editingMascota, data: { clienteId: id!, ...data } },
+            {
+               onSuccess: () => {
+                  setEditingMascota(null);
+                  setIsMascotaFormOpen(false);
+               },
+            }
+         );
       }
    };
 
    const handleDeleteMascota = (mascotaId: string, nombreMascota: string) => {
       if (confirm(`¿Estás seguro de eliminar a ${nombreMascota}?`)) {
-         deleteMascota(mascotaId);
-         toast.success("Mascota eliminada exitosamente");
+         deleteMascotaMutation.mutate(mascotaId);
       }
    };
 
@@ -306,7 +329,30 @@ export default function ClienteDetail() {
       }
    };
 
-   if (!cliente) {
+   // Mostrar loading
+   if (isLoadingCliente) {
+      return (
+         <div>
+            <Button variant='ghost' asChild className='mb-4'>
+               <Link to='/clientes'>
+                  <ArrowLeft className='mr-2 h-4 w-4' />
+                  Volver
+               </Link>
+            </Button>
+            <Card>
+               <CardContent className='pt-6 flex justify-center'>
+                  <div className="flex items-center gap-2">
+                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                     <p className='text-muted-foreground'>Cargando cliente...</p>
+                  </div>
+               </CardContent>
+            </Card>
+         </div>
+      );
+   }
+
+   // Mostrar error
+   if (errorCliente || !cliente) {
       return (
          <div>
             <Button variant='ghost' asChild className='mb-4'>
@@ -317,7 +363,14 @@ export default function ClienteDetail() {
             </Button>
             <Card>
                <CardContent className='pt-6'>
-                  <p className='text-muted-foreground'>Cliente no encontrado</p>
+                  <p className='text-destructive mb-2'>
+                     {errorCliente ? 'Error al cargar cliente' : 'Cliente no encontrado'}
+                  </p>
+                  {errorCliente && (
+                     <p className='text-sm text-muted-foreground'>
+                        {(errorCliente as Error).message}
+                     </p>
+                  )}
                </CardContent>
             </Card>
          </div>
@@ -437,9 +490,7 @@ export default function ClienteDetail() {
                   <div>
                      <CardTitle>Mascotas</CardTitle>
                      <CardDescription>
-                        {mascotas.length} mascota
-                        {mascotas.length !== 1 ? "s" : ""} registrada
-                        {mascotas.length !== 1 ? "s" : ""}
+                        {isLoadingMascotas ? 'Cargando...' : `${mascotas.length} mascota${mascotas.length !== 1 ? "s" : ""} registrada${mascotas.length !== 1 ? "s" : ""}`}
                      </CardDescription>
                   </div>
                   <Button
@@ -447,6 +498,7 @@ export default function ClienteDetail() {
                         setEditingMascota(null);
                         setIsMascotaFormOpen(true);
                      }}
+                     disabled={isLoadingMascotas}
                   >
                      <Plus className='mr-2 h-4 w-4' />
                      Nueva Mascota
@@ -454,7 +506,11 @@ export default function ClienteDetail() {
                </div>
             </CardHeader>
             <CardContent>
-               {mascotas.length === 0 ? (
+               {isLoadingMascotas ? (
+                  <div className='flex justify-center items-center py-8'>
+                     <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
+                  </div>
+               ) : mascotas.length === 0 ? (
                   <p className='text-sm text-muted-foreground'>
                      No hay mascotas registradas
                   </p>

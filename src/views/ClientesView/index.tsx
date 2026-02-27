@@ -5,26 +5,59 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, Loader2 } from 'lucide-react';
 import { ClienteForm } from '@/components/clientes/ClienteForm';
 import type { ClienteFormValues } from '@/lib/schemas';
-import { toast } from 'sonner';
+import { useClientes, useCreateCliente } from '@/hooks/useClientes';
+import { useMascotas } from '@/hooks/useMascotas';
 
 export default function ClientesView() {
-  const { clientes, getMascotasByClienteId, addCliente, getSaldoCliente } = useData();
+  // TanStack Query hooks para clientes desde Supabase
+  const { data: clientes = [], isLoading, error } = useClientes();
+  const createClienteMutation = useCreateCliente();
+
+  // TanStack Query hooks para mascotas desde Supabase
+  const { data: mascotas = [] } = useMascotas();
+
+  // Helper para contar mascotas por cliente
+  const getMascotasCountByClienteId = (clienteId: string) => {
+    return mascotas.filter(m => m.clienteId === clienteId).length;
+  };
+
+  // DataContext para saldo (aún no migrado)
+  const { getSaldoCliente } = useData();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const handleCreateCliente = (data: ClienteFormValues) => {
-    const nuevoCliente = {
-      id: crypto.randomUUID(),
-      ...data,
-      fechaRegistro: new Date(),
-      saldoPendiente: 0,
-    };
-
-    addCliente(nuevoCliente);
-    toast.success('Cliente creado exitosamente');
+    createClienteMutation.mutate(data, {
+      onSuccess: () => {
+        setIsFormOpen(false);
+      },
+    });
   };
+
+  // Mostrar error si hay
+  if (error) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Clientes</h1>
+            <p className="text-muted-foreground">Gestión de clientes y sus mascotas</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <p className="text-destructive mb-2">Error al cargar clientes</p>
+              <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -33,7 +66,7 @@ export default function ClientesView() {
           <h1 className="text-3xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">Gestión de clientes y sus mascotas</p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
+        <Button onClick={() => setIsFormOpen(true)} disabled={createClienteMutation.isPending}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Cliente
         </Button>
@@ -43,11 +76,15 @@ export default function ClientesView() {
         <CardHeader>
           <CardTitle>Listado de Clientes</CardTitle>
           <CardDescription>
-            {clientes.length} cliente{clientes.length !== 1 ? 's' : ''} registrado{clientes.length !== 1 ? 's' : ''}
+            {isLoading ? 'Cargando...' : `${clientes.length} cliente${clientes.length !== 1 ? 's' : ''} registrado${clientes.length !== 1 ? 's' : ''}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {clientes.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : clientes.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">No hay clientes registrados</p>
               <Button onClick={() => setIsFormOpen(true)}>
@@ -69,7 +106,7 @@ export default function ClientesView() {
               </TableHeader>
               <TableBody>
                 {clientes.map((cliente) => {
-                  const mascotas = getMascotasByClienteId(cliente.id);
+                  const mascotasCount = getMascotasCountByClienteId(cliente.id);
                   const saldo = getSaldoCliente(cliente.id);
                   const tieneSaldo = saldo > 0;
 
@@ -82,7 +119,7 @@ export default function ClientesView() {
                       <TableCell>{cliente.email || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {mascotas.length} mascota{mascotas.length !== 1 ? 's' : ''}
+                          {mascotasCount} mascota{mascotasCount !== 1 ? 's' : ''}
                         </Badge>
                       </TableCell>
                       <TableCell>

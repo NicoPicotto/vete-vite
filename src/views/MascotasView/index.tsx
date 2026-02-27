@@ -1,13 +1,40 @@
 import { Link } from 'react-router-dom';
-import { useData } from '@/context/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, User } from 'lucide-react';
+import { Eye, User, Loader2 } from 'lucide-react';
+import { useMascotas } from '@/hooks/useMascotas';
+import { useClientes } from '@/hooks/useClientes';
 
 export default function MascotasView() {
-  const { mascotas, getClienteById } = useData();
+  const { data: mascotas = [], isLoading: isLoadingMascotas, error: errorMascotas } = useMascotas();
+  const { data: clientes = [] } = useClientes();
+
+  // Helper para obtener cliente por ID
+  const getClienteById = (clienteId: string) => {
+    return clientes.find(c => c.id === clienteId);
+  };
+
+  // Mostrar error
+  if (errorMascotas) {
+    return (
+      <div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Mascotas</h1>
+          <p className="text-muted-foreground">Listado completo de mascotas registradas</p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <p className="text-destructive mb-2">Error al cargar mascotas</p>
+              <p className="text-sm text-muted-foreground">{(errorMascotas as Error).message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -20,10 +47,19 @@ export default function MascotasView() {
         <CardHeader>
           <CardTitle>Todas las Mascotas</CardTitle>
           <CardDescription>
-            {mascotas.length} mascota{mascotas.length !== 1 ? 's' : ''} registrada{mascotas.length !== 1 ? 's' : ''}
+            {isLoadingMascotas ? 'Cargando...' : `${mascotas.length} mascota${mascotas.length !== 1 ? 's' : ''} registrada${mascotas.length !== 1 ? 's' : ''}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {isLoadingMascotas ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : mascotas.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No hay mascotas registradas</p>
+            </div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -76,6 +112,7 @@ export default function MascotasView() {
               })}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>
