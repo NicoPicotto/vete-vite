@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { HistoriaClinica, HistoriaClinicaFormData } from '@/lib/types';
+import type { HistoriaClinicaFormData } from '@/lib/types';
 import {
   getHistoriasClinicas,
   getHistoriaClinicaById,

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { Mascota, MascotaFormData } from '@/lib/types';
+import type { MascotaFormData } from '@/lib/types';
 import {
   getMascotas,
   getMascotaById,

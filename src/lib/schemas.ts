@@ -61,7 +61,7 @@ export const mascotaSchema = z.object({
     .optional()
     .or(z.literal('')),
   sexo: z.enum(['Macho', 'Hembra']),
-  estado: z.enum(['Activo', 'Fallecido']).default('Activo'),
+  estado: z.enum(['Activo', 'Fallecido']),
   otrasCaracteristicas: z
     .string()
     .max(500, 'Las características no pueden exceder 500 caracteres')

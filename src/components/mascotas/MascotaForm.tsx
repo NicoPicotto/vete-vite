@@ -51,38 +51,50 @@ export function MascotaForm({
     watch,
   } = useForm<MascotaFormValues>({
     resolver: zodResolver(mascotaSchema),
-  });
-
-  // Cargar datos cuando se abre el formulario
-  useEffect(() => {
-    if (open) {
-      if (initialData) {
-        // Modo editar - cargar datos existentes
-        reset({
+    defaultValues: initialData
+      ? {
           nombre: initialData.nombre,
           especie: initialData.especie,
           raza: initialData.raza,
-          fechaNacimiento: initialData.fechaNacimiento,
+          fechaNacimiento: initialData.fechaNacimiento
+            ? new Date(initialData.fechaNacimiento)
+            : undefined,
           edad: initialData.edad || '',
           sexo: initialData.sexo,
           estado: initialData.estado,
           otrasCaracteristicas: initialData.otrasCaracteristicas || '',
-        });
-      } else {
-        // Modo crear - valores por defecto limpios
-        reset({
+        }
+      : {
           nombre: '',
-          especie: undefined,
           raza: '',
           fechaNacimiento: undefined,
           edad: '',
-          sexo: undefined,
           estado: 'Activo',
           otrasCaracteristicas: '',
-        });
-      }
+        },
+  });
+
+  const especie = watch('especie');
+  const sexo = watch('sexo');
+  const estado = watch('estado');
+
+  // Reset form cuando cambia initialData
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        nombre: initialData.nombre,
+        especie: initialData.especie,
+        raza: initialData.raza,
+        fechaNacimiento: initialData.fechaNacimiento
+          ? new Date(initialData.fechaNacimiento)
+          : undefined,
+        edad: initialData.edad || '',
+        sexo: initialData.sexo,
+        estado: initialData.estado,
+        otrasCaracteristicas: initialData.otrasCaracteristicas || '',
+      });
     }
-  }, [open, initialData, reset]);
+  }, [initialData, reset]);
 
   const handleFormSubmit = async (data: MascotaFormValues) => {
     await onSubmit(data);
@@ -133,16 +145,20 @@ export function MascotaForm({
                 Especie <span className="text-destructive">*</span>
               </Label>
               <Select
-                onValueChange={(value) => setValue('especie', value as any)}
-                value={watch('especie')}
+                value={especie}
+                onValueChange={(value) =>
+                  setValue('especie', value as (typeof especies)[number], {
+                    shouldValidate: true,
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona especie" />
                 </SelectTrigger>
                 <SelectContent>
-                  {especies.map((especie) => (
-                    <SelectItem key={especie} value={especie}>
-                      {especie}
+                  {especies.map((esp) => (
+                    <SelectItem key={esp} value={esp}>
+                      {esp}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -174,16 +190,20 @@ export function MascotaForm({
                 Sexo <span className="text-destructive">*</span>
               </Label>
               <Select
-                onValueChange={(value) => setValue('sexo', value as any)}
-                value={watch('sexo')}
+                value={sexo}
+                onValueChange={(value) =>
+                  setValue('sexo', value as (typeof sexos)[number], {
+                    shouldValidate: true,
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona sexo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sexos.map((sexo) => (
-                    <SelectItem key={sexo} value={sexo}>
-                      {sexo}
+                  {sexos.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -210,16 +230,20 @@ export function MascotaForm({
           <div className="space-y-2">
             <Label htmlFor="estado">Estado</Label>
             <Select
-              onValueChange={(value) => setValue('estado', value as any)}
-              value={watch('estado')}
+              value={estado}
+              onValueChange={(value) =>
+                setValue('estado', value as (typeof estados)[number], {
+                  shouldValidate: true,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {estados.map((estado) => (
-                  <SelectItem key={estado} value={estado}>
-                    {estado}
+                {estados.map((est) => (
+                  <SelectItem key={est} value={est}>
+                    {est}
                   </SelectItem>
                 ))}
               </SelectContent>
