@@ -53,6 +53,9 @@ export function ReprogramarDialog({
     resolver: zodResolver(reprogramarRecordatorioSchema),
   });
 
+  // Keep using isSubmitting from formState since this component
+  // receives onSubmit as prop and handles mutation in parent
+
   const fechaRecordatorio = watch('fechaRecordatorio');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
 

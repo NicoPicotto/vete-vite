@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useData } from '@/context/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +9,7 @@ import { ClienteForm } from '@/components/clientes/ClienteForm';
 import type { ClienteFormValues } from '@/lib/schemas';
 import { useClientes, useCreateCliente } from '@/hooks/useClientes';
 import { useMascotas } from '@/hooks/useMascotas';
+import { useItemsPago } from '@/hooks/usePagos';
 
 export default function ClientesView() {
   // TanStack Query hooks para clientes desde Supabase
@@ -19,13 +19,31 @@ export default function ClientesView() {
   // TanStack Query hooks para mascotas desde Supabase
   const { data: mascotas = [] } = useMascotas();
 
+  // TanStack Query hooks para items de pago desde Supabase
+  const { data: itemsPago = [] } = useItemsPago();
+
   // Helper para contar mascotas por cliente
   const getMascotasCountByClienteId = (clienteId: string) => {
     return mascotas.filter(m => m.clienteId === clienteId).length;
   };
 
-  // DataContext para saldo (aún no migrado)
-  const { getSaldoCliente } = useData();
+  // Calcular saldo por cliente
+  const saldosPorCliente = useMemo(() => {
+    const saldos = new Map<string, number>();
+
+    itemsPago.forEach((item) => {
+      const saldo = item.monto - item.montoPagado;
+      if (saldo > 0) {
+        saldos.set(item.clienteId, (saldos.get(item.clienteId) || 0) + saldo);
+      }
+    });
+
+    return saldos;
+  }, [itemsPago]);
+
+  const getSaldoCliente = (clienteId: string) => {
+    return saldosPorCliente.get(clienteId) || 0;
+  };
 
   const [isFormOpen, setIsFormOpen] = useState(false);
 

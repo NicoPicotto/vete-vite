@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useData } from "@/context/DataContext";
 import { useCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
 import { useMascotasByCliente, useCreateMascota, useUpdateMascota, useDeleteMascota } from "@/hooks/useMascotas";
+import { useItemsPagoByCliente, useCreatePagoParcial, useDeleteItemPago } from "@/hooks/usePagos";
+import {
+   useRecordatoriosByCliente,
+   useCompletarRecordatorio,
+   useCancelarRecordatorio,
+   useReprogramarRecordatorio,
+   useDeleteRecordatorio,
+} from "@/hooks/useRecordatorios";
 import {
    Card,
    CardContent,
@@ -55,13 +62,10 @@ import { ReprogramarDialog } from "@/components/recordatorios/ReprogramarDialog"
 import type {
    ClienteFormValues,
    MascotaFormValues,
-   ItemPagoFormValues,
    PagoParcialFormValues,
-   RecordatorioFormValues,
    ReprogramarRecordatorioFormValues,
 } from "@/lib/schemas";
 import type { ItemPago, Recordatorio } from "@/lib/types";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -80,20 +84,18 @@ export default function ClienteDetail() {
    const updateMascotaMutation = useUpdateMascota();
    const deleteMascotaMutation = useDeleteMascota();
 
-   // DataContext para datos que aún no migramos (pagos, recordatorios)
-   const {
-      getItemsPagoByClienteId,
-      addItemPago,
-      updateItemPago,
-      deleteItemPago,
-      registrarPagoParcial,
-      getRecordatoriosByClienteId,
-      addRecordatorio,
-      deleteRecordatorio,
-      reprogramarRecordatorio,
-      completarRecordatorio,
-      cancelarRecordatorio,
-   } = useData();
+   // TanStack Query hooks para pagos desde Supabase
+   const { data: itemsPago = [], isLoading: isLoadingPagos } = useItemsPagoByCliente(id!);
+   const createPagoParcialMutation = useCreatePagoParcial();
+   const deleteItemPagoMutation = useDeleteItemPago();
+
+   // Hooks de recordatorios
+   const { data: recordatorios = [], isLoading: isLoadingRecordatorios } =
+      useRecordatoriosByCliente(id!);
+   const completarRecordatorioMutation = useCompletarRecordatorio();
+   const cancelarRecordatorioMutation = useCancelarRecordatorio();
+   const reprogramarRecordatorioMutation = useReprogramarRecordatorio();
+   const deleteRecordatorioMutation = useDeleteRecordatorio();
 
    const [isEditFormOpen, setIsEditFormOpen] = useState(false);
    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -111,10 +113,6 @@ export default function ClienteDetail() {
    const [isRecordatorioFormOpen, setIsRecordatorioFormOpen] = useState(false);
    const [isReprogramarDialogOpen, setIsReprogramarDialogOpen] = useState(false);
    const [selectedRecordatorio, setSelectedRecordatorio] = useState<Recordatorio | null>(null);
-
-   // Obtener datos relacionados (aún desde DataContext hasta que los migremos)
-   const itemsPago = getItemsPagoByClienteId(id!);
-   const recordatorios = getRecordatoriosByClienteId(id!);
 
    const handleEditCliente = (data: ClienteFormValues) => {
       updateClienteMutation.mutate(
@@ -192,8 +190,7 @@ export default function ClienteDetail() {
 
    const handleDeletePago = (pagoId: string, descripcion: string) => {
       if (confirm(`¿Estás seguro de eliminar el pago "${descripcion}"?`)) {
-         deleteItemPago(pagoId);
-         toast.success("Pago eliminado exitosamente");
+         deleteItemPagoMutation.mutate(pagoId);
       }
    };
 
@@ -202,67 +199,21 @@ export default function ClienteDetail() {
       setIsPagoParcialFormOpen(true);
    };
 
-   const handlePagoSubmit = (data: ItemPagoFormValues) => {
-      if (editingPago) {
-         updateItemPago(editingPago.id, {
-            descripcion: data.descripcion,
-            monto: data.monto,
-            fecha: data.fecha,
-         });
-         toast.success("Pago actualizado exitosamente");
-      } else {
-         const entregaInicial = data.entregaInicial || 0;
-         const montoPagado = Math.min(entregaInicial, data.monto); // No puede pagar más del monto total
-
-         // Determinar estado inicial
-         let estadoInicial: "Pendiente" | "Pagado Parcial" | "Pagado" =
-            "Pendiente";
-         if (montoPagado >= data.monto) {
-            estadoInicial = "Pagado";
-         } else if (montoPagado > 0) {
-            estadoInicial = "Pagado Parcial";
-         }
-
-         // Crear pago parcial si hay entrega inicial
-         const pagosParciales =
-            montoPagado > 0
-               ? [
-                    {
-                       id: crypto.randomUUID(),
-                       monto: montoPagado,
-                       fecha: data.fecha,
-                       notas: "Pago inicial",
-                    },
-                 ]
-               : [];
-
-         const nuevoPago: ItemPago = {
-            id: crypto.randomUUID(),
-            clienteId: id!,
-            descripcion: data.descripcion,
-            monto: data.monto,
-            fecha: data.fecha,
-            estado: estadoInicial,
-            montoPagado,
-            pagosParciales,
-         };
-         addItemPago(nuevoPago);
-         toast.success(
-            montoPagado > 0
-               ? "Pago creado y entrega inicial registrada"
-               : "Pago creado exitosamente",
-         );
-      }
+   const handlePagoSubmit = () => {
+      // La lógica de crear/editar se maneja en PagoItemForm
+      setIsPagoFormOpen(false);
+      setEditingPago(null);
    };
 
    const handlePagoParcialSubmit = (data: PagoParcialFormValues) => {
       if (selectedPagoForPayment) {
-         registrarPagoParcial(
-            selectedPagoForPayment.id,
-            data.monto,
-            data.notas,
-         );
-         toast.success("Pago registrado exitosamente");
+         createPagoParcialMutation.mutate({
+            itemPagoId: selectedPagoForPayment.id,
+            monto: data.monto,
+            notas: data.notas,
+         });
+         setIsPagoParcialFormOpen(false);
+         setSelectedPagoForPayment(null);
       }
    };
 
@@ -274,26 +225,6 @@ export default function ClienteDetail() {
       setIsRecordatorioFormOpen(true);
    };
 
-   const handleRecordatorioSubmit = (data: RecordatorioFormValues) => {
-      const mascota = mascotas.find((m) => m.id === data.mascotaId);
-      if (!mascota) return;
-
-      const nuevoRecordatorio: Recordatorio = {
-         id: crypto.randomUUID(),
-         mascotaId: data.mascotaId,
-         clienteId: id!,
-         titulo: data.titulo,
-         descripcion: data.descripcion,
-         fechaRecordatorio: data.fechaRecordatorio,
-         estado: "Pendiente",
-         esRecurrente: false,
-         fechaCreacion: new Date(),
-      };
-
-      addRecordatorio(nuevoRecordatorio);
-      toast.success("Recordatorio creado exitosamente");
-   };
-
    const handleReprogramar = (recordatorio: Recordatorio) => {
       setSelectedRecordatorio(recordatorio);
       setIsReprogramarDialogOpen(true);
@@ -301,31 +232,29 @@ export default function ClienteDetail() {
 
    const handleReprogramarSubmit = (data: ReprogramarRecordatorioFormValues) => {
       if (selectedRecordatorio) {
-         reprogramarRecordatorio(
-            selectedRecordatorio.id,
-            data.fechaRecordatorio,
-            data.notasReprogramacion,
-         );
-         toast.success("Recordatorio reprogramado exitosamente");
+         reprogramarRecordatorioMutation.mutate({
+            id: selectedRecordatorio.id,
+            nuevaFecha: data.fechaRecordatorio,
+            notas: data.notasReprogramacion,
+         });
+         setIsReprogramarDialogOpen(false);
+         setSelectedRecordatorio(null);
       }
    };
 
    const handleCompletar = (recordatorioId: string) => {
-      completarRecordatorio(recordatorioId);
-      toast.success("Recordatorio marcado como completado");
+      completarRecordatorioMutation.mutate(recordatorioId);
    };
 
    const handleCancelar = (recordatorioId: string) => {
       if (confirm("¿Estás seguro de cancelar este recordatorio?")) {
-         cancelarRecordatorio(recordatorioId);
-         toast.success("Recordatorio cancelado");
+         cancelarRecordatorioMutation.mutate(recordatorioId);
       }
    };
 
    const handleDeleteRecordatorio = (recordatorioId: string, titulo: string) => {
       if (confirm(`¿Estás seguro de eliminar el recordatorio "${titulo}"?`)) {
-         deleteRecordatorio(recordatorioId);
-         toast.success("Recordatorio eliminado");
+         deleteRecordatorioMutation.mutate(recordatorioId);
       }
    };
 
@@ -610,7 +539,11 @@ export default function ClienteDetail() {
                </div>
             </CardHeader>
             <CardContent>
-               {itemsPago.length === 0 ? (
+               {isLoadingPagos ? (
+                  <div className='flex justify-center items-center py-8'>
+                     <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                  </div>
+               ) : itemsPago.length === 0 ? (
                   <p className='text-sm text-muted-foreground'>
                      No hay pagos registrados
                   </p>
@@ -733,7 +666,11 @@ export default function ClienteDetail() {
                </div>
             </CardHeader>
             <CardContent>
-               {recordatorios.length === 0 ? (
+               {isLoadingRecordatorios ? (
+                  <div className='flex justify-center items-center py-8'>
+                     <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                  </div>
+               ) : recordatorios.length === 0 ? (
                   <p className='text-sm text-muted-foreground'>
                      No hay recordatorios registrados
                   </p>
@@ -945,7 +882,6 @@ export default function ClienteDetail() {
          <RecordatorioForm
             open={isRecordatorioFormOpen}
             onOpenChange={setIsRecordatorioFormOpen}
-            onSubmit={handleRecordatorioSubmit}
             clienteId={id!}
          />
 

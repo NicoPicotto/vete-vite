@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useData } from '@/context/DataContext';
 import { useMascota } from '@/hooks/useMascotas';
 import { useCliente } from '@/hooks/useClientes';
 import { useHistoriasClinicasByMascota, useCreateHistoriaClinica, useUpdateHistoriaClinica, useDeleteHistoriaClinica } from '@/hooks/useHistoriaClinica';
+import { useCreateRecordatorio } from '@/hooks/useRecordatorios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,9 +35,7 @@ export default function MascotaDetail() {
   const createHistoriaMutation = useCreateHistoriaClinica();
   const updateHistoriaMutation = useUpdateHistoriaClinica();
   const deleteHistoriaMutation = useDeleteHistoriaClinica();
-
-  // DataContext para recordatorios (aún no migrado)
-  const { addRecordatorio } = useData();
+  const createRecordatorioMutation = useCreateRecordatorio();
 
   const [isConsultaFormOpen, setIsConsultaFormOpen] = useState(false);
   const [editingConsulta, setEditingConsulta] = useState<HistoriaClinica | undefined>();
@@ -65,20 +63,16 @@ export default function MascotaDetail() {
 
             // Crear recordatorio si se proporcionó
             if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
-              const nuevoRecordatorio = {
-                id: crypto.randomUUID(),
+              createRecordatorioMutation.mutate({
                 historiaClinicaId: nuevaConsulta.id,
                 mascotaId: id!,
                 clienteId: mascota.clienteId,
                 titulo: recordatorioData.titulo,
                 descripcion: recordatorioData.descripcion,
                 fechaRecordatorio: recordatorioData.fechaRecordatorio,
-                esRecurrente: false,
-                estado: 'Pendiente' as const,
-                fechaCreacion: new Date(),
-              };
-              addRecordatorio(nuevoRecordatorio);
-              toast.success('Consulta y recordatorio creados exitosamente');
+              });
+            } else {
+              toast.success('Consulta creada exitosamente');
             }
           },
         }

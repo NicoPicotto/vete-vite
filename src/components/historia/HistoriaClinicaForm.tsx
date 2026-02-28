@@ -56,6 +56,7 @@ export function HistoriaClinicaForm({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
   } = useForm<HistoriaClinicaFormValues>({
     resolver: zodResolver(historiaClinicaSchema),
   });
@@ -68,12 +69,26 @@ export function HistoriaClinicaForm({
   const [recordatorioFecha, setRecordatorioFecha] = useState<Date>(new Date());
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
 
+  // Estado local para la fecha de la consulta (en formato YYYY-MM-DD para el input)
+  const [fechaConsulta, setFechaConsulta] = useState<string>('');
+
   // Cargar datos cuando se abre el formulario
   useEffect(() => {
     if (open) {
       if (editData) {
         // Modo editar - cargar datos existentes
+        // Extraer la fecha en formato ISO (YYYY-MM-DD)
+        const fechaString = typeof editData.fecha === 'string' ? editData.fecha : editData.fecha.toISOString();
+        const fechaISO = fechaString.split('T')[0]; // "2026-02-25"
+
+        // Setear la fecha en el estado local (formato YYYY-MM-DD para el input)
+        setFechaConsulta(fechaISO);
+
+        const [year, month, day] = fechaISO.split('-').map(Number);
+        const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
         reset({
+          fecha: fechaUTC,
           motivoConsulta: editData.motivoConsulta,
           diagnostico: editData.diagnostico,
           tratamiento: editData.tratamiento,
@@ -82,12 +97,14 @@ export function HistoriaClinicaForm({
           veterinario: editData.veterinario,
           notas: editData.notas,
         });
-        // No permitir crear recordatorio en modo edición
-        setCrearRecordatorio(false);
-        setIsCollapsibleOpen(false);
       } else {
-        // Modo crear - valores por defecto limpios
+        // Modo crear - valores por defecto limpios (fecha de hoy)
+        const hoy = new Date();
+        const fechaISOHoy = hoy.toISOString().split('T')[0];
+        setFechaConsulta(fechaISOHoy);
+
         reset({
+          fecha: hoy,
           motivoConsulta: '',
           diagnostico: '',
           tratamiento: '',
@@ -97,14 +114,15 @@ export function HistoriaClinicaForm({
           notas: '',
         });
         // Resetear recordatorio
-        setCrearRecordatorio(false);
-        setIsCollapsibleOpen(false);
         setRecordatorioTitulo('');
         setRecordatorioDescripcion('');
         const fechaInicial = new Date();
         fechaInicial.setMonth(fechaInicial.getMonth() + 3); // Default +3 meses
         setRecordatorioFecha(fechaInicial);
       }
+      // Resetear estado de recordatorio
+      setCrearRecordatorio(false);
+      setIsCollapsibleOpen(false);
     }
   }, [editData, open, reset]);
 
@@ -170,6 +188,31 @@ export function HistoriaClinicaForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="fecha">
+              Fecha de la Consulta <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="fecha"
+              type="date"
+              value={fechaConsulta}
+              onChange={(e) => {
+                const fechaStr = e.target.value; // "2026-02-25"
+                setFechaConsulta(fechaStr);
+
+                // Convertir a Date y actualizar el formulario
+                if (fechaStr) {
+                  const [year, month, day] = fechaStr.split('-').map(Number);
+                  const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+                  setValue('fecha', fechaUTC, { shouldValidate: true });
+                }
+              }}
+            />
+            {errors.fecha && (
+              <p className="text-sm text-destructive">{errors.fecha.message}</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="motivoConsulta">
               Motivo de Consulta <span className="text-destructive">*</span>

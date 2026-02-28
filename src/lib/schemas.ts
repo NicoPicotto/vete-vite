@@ -49,9 +49,7 @@ export const mascotaSchema = z.object({
     .string()
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .max(50, 'El nombre no puede exceder 50 caracteres'),
-  especie: z.enum(['Perro', 'Gato', 'Exótico', 'Ave', 'Roedor', 'Reptil', 'Otro'], {
-    required_error: 'Debes seleccionar una especie',
-  }),
+  especie: z.enum(['Perro', 'Gato', 'Exótico', 'Ave', 'Roedor', 'Reptil', 'Otro']),
   raza: z
     .string()
     .min(2, 'La raza debe tener al menos 2 caracteres')
@@ -62,9 +60,7 @@ export const mascotaSchema = z.object({
     .max(20, 'La edad no puede exceder 20 caracteres')
     .optional()
     .or(z.literal('')),
-  sexo: z.enum(['Macho', 'Hembra'], {
-    required_error: 'Debes seleccionar el sexo',
-  }),
+  sexo: z.enum(['Macho', 'Hembra']),
   estado: z.enum(['Activo', 'Fallecido']).default('Activo'),
   otrasCaracteristicas: z
     .string()
@@ -80,6 +76,7 @@ export type MascotaFormValues = z.infer<typeof mascotaSchema>;
 // ============================================
 
 export const historiaClinicaSchema = z.object({
+  fecha: z.date(),
   motivoConsulta: z
     .string()
     .min(3, 'El motivo debe tener al menos 3 caracteres')

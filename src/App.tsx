@@ -1,7 +1,6 @@
 import { RouterProvider } from 'react-router-dom';
 import { router } from '@/lib/router';
 import { Toaster } from 'sonner';
-import { DataProvider } from '@/context/DataContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Configuración del QueryClient
@@ -18,10 +17,8 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <DataProvider>
-        <RouterProvider router={router} />
-        <Toaster position="top-right" />
-      </DataProvider>
+      <RouterProvider router={router} />
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }

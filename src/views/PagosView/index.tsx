@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { useData } from '@/context/DataContext';
+import { useClientes } from '@/hooks/useClientes';
+import {
+  useItemsPago,
+  useDeleteItemPago,
+  useCreatePagoParcial,
+} from '@/hooks/usePagos';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,25 +30,20 @@ import {
 import { PagoItemForm } from '@/components/pagos/PagoItemForm';
 import { PagoParcialForm } from '@/components/pagos/PagoParcialForm';
 import type { ItemPago } from '@/lib/types';
-import type { ItemPagoFormValues, PagoParcialFormValues } from '@/lib/schemas';
-import { DollarSign, Pencil, Trash2, CreditCard, User } from 'lucide-react';
+import type { PagoParcialFormValues } from '@/lib/schemas';
+import { DollarSign, Pencil, Trash2, CreditCard, User, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function PagosView() {
   const navigate = useNavigate();
-  const {
-    clientes,
-    itemsPago,
-    addItemPago,
-    updateItemPago,
-    deleteItemPago,
-    getItemsPagoByClienteId,
-    getSaldoCliente,
-    registrarPagoParcial,
-  } = useData();
+
+  // Hooks de datos
+  const { data: clientes = [], isLoading: isLoadingClientes } = useClientes();
+  const { data: itemsPago = [], isLoading: isLoadingPagos } = useItemsPago();
+  const deleteItemPagoMutation = useDeleteItemPago();
+  const createPagoParcialMutation = useCreatePagoParcial();
 
   // Estados para formularios
   const [itemFormOpen, setItemFormOpen] = useState(false);
@@ -54,6 +54,17 @@ export default function PagosView() {
   // Estado para AlertDialog de eliminación
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemPago | null>(null);
+
+  // ============================================
+  // CALCULOS
+  // ============================================
+
+  // Calcular saldo pendiente por cliente
+  const getSaldoCliente = (clienteId: string): number => {
+    return itemsPago
+      .filter((item) => item.clienteId === clienteId)
+      .reduce((total, item) => total + (item.monto - item.montoPagado), 0);
+  };
 
   // Clientes con saldo pendiente
   const clientesConSaldo = clientes
@@ -81,52 +92,17 @@ export default function PagosView() {
 
   const handleDeleteConfirm = () => {
     if (itemToDelete) {
-      deleteItemPago(itemToDelete.id);
-      toast.success('Item de pago eliminado correctamente');
+      deleteItemPagoMutation.mutate(itemToDelete.id);
       setItemToDelete(null);
       setDeleteDialogOpen(false);
     }
   };
 
-  const handleItemSubmit = (data: ItemPagoFormValues) => {
-    if (formMode === 'create') {
-      const entregaInicial = data.entregaInicial || 0;
-      const montoPagado = Math.min(entregaInicial, data.monto);
-
-      let estadoInicial: 'Pendiente' | 'Pagado Parcial' | 'Pagado' = 'Pendiente';
-      if (montoPagado >= data.monto) {
-        estadoInicial = 'Pagado';
-      } else if (montoPagado > 0) {
-        estadoInicial = 'Pagado Parcial';
-      }
-
-      const pagosParciales = montoPagado > 0 ? [{
-        id: crypto.randomUUID(),
-        monto: montoPagado,
-        fecha: data.fecha,
-        notas: 'Pago inicial',
-      }] : [];
-
-      const newItem: ItemPago = {
-        id: crypto.randomUUID(),
-        clienteId: data.clienteId,
-        descripcion: data.descripcion,
-        monto: data.monto,
-        fecha: data.fecha,
-        estado: estadoInicial,
-        montoPagado,
-        pagosParciales,
-      };
-      addItemPago(newItem);
-      toast.success(montoPagado > 0 ? 'Pago creado y entrega inicial registrada' : 'Item de pago creado correctamente');
-    } else if (selectedItem) {
-      updateItemPago(selectedItem.id, {
-        descripcion: data.descripcion,
-        monto: data.monto,
-        fecha: data.fecha,
-      });
-      toast.success('Item de pago actualizado correctamente');
-    }
+  const handleItemSubmit = () => {
+    // La lógica de crear/editar se maneja en el PagoItemForm
+    // que usa los hooks directamente
+    setItemFormOpen(false);
+    setSelectedItem(null);
   };
 
   // ============================================
@@ -140,8 +116,13 @@ export default function PagosView() {
 
   const handlePagoParcialSubmit = (data: PagoParcialFormValues) => {
     if (selectedItem) {
-      registrarPagoParcial(selectedItem.id, data.monto, data.notas);
-      toast.success('Pago registrado correctamente');
+      createPagoParcialMutation.mutate({
+        itemPagoId: selectedItem.id,
+        monto: data.monto,
+        notas: data.notas,
+      });
+      setPagoFormOpen(false);
+      setSelectedItem(null);
     }
   };
 
@@ -164,6 +145,30 @@ export default function PagosView() {
     const cliente = clientes.find((c) => c.id === clienteId);
     return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
   };
+
+  const getItemsPagoByClienteId = (clienteId: string) => {
+    return itemsPago.filter((item) => item.clienteId === clienteId);
+  };
+
+  // ============================================
+  // LOADING STATE
+  // ============================================
+
+  if (isLoadingClientes || isLoadingPagos) {
+    return (
+      <div className="p-6">
+        <h1 className="text-3xl font-bold mb-6">Pagos y Cuentas</h1>
+        <Card>
+          <CardContent className="py-10">
+            <div className="flex justify-center items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <p className="text-muted-foreground">Cargando datos de pagos...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

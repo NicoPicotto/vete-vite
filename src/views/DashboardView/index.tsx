@@ -1,11 +1,65 @@
-import { useData } from '@/context/DataContext';
+import { useMemo } from 'react';
+import { useClientes } from '@/hooks/useClientes';
+import { useMascotas } from '@/hooks/useMascotas';
+import { useRecordatorios } from '@/hooks/useRecordatorios';
+import { useItemsPago } from '@/hooks/usePagos';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, PawPrint, Bell, CreditCard } from 'lucide-react';
+import { Users, PawPrint, Bell, CreditCard, Loader2 } from 'lucide-react';
 
 export default function DashboardView() {
-  const { clientes, mascotas, getRecordatoriosPendientes, getSaldoCliente } = useData();
-  const recordatoriosPendientes = getRecordatoriosPendientes();
-  const totalDeuda = clientes.reduce((sum, c) => sum + getSaldoCliente(c.id), 0);
+  // Hooks de datos
+  const { data: clientes = [], isLoading: isLoadingClientes } = useClientes();
+  const { data: mascotas = [], isLoading: isLoadingMascotas } = useMascotas();
+  const { data: recordatorios = [], isLoading: isLoadingRecordatorios } = useRecordatorios();
+  const { data: itemsPago = [], isLoading: isLoadingPagos } = useItemsPago();
+
+  // Calcular recordatorios pendientes
+  const recordatoriosPendientes = useMemo(() => {
+    return recordatorios
+      .filter((r) => r.estado === 'Pendiente' || r.estado === 'Reprogramado')
+      .sort(
+        (a, b) =>
+          new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime()
+      );
+  }, [recordatorios]);
+
+  // Calcular deuda total y saldo por cliente
+  const { totalDeuda, saldosPorCliente } = useMemo(() => {
+    const saldos = new Map<string, number>();
+    let total = 0;
+
+    itemsPago.forEach((item) => {
+      const saldo = item.monto - item.montoPagado;
+      if (saldo > 0) {
+        saldos.set(item.clienteId, (saldos.get(item.clienteId) || 0) + saldo);
+        total += saldo;
+      }
+    });
+
+    return { totalDeuda: total, saldosPorCliente: saldos };
+  }, [itemsPago]);
+
+  // Clientes con deuda
+  const clientesConDeuda = useMemo(() => {
+    return clientes
+      .filter((c) => (saldosPorCliente.get(c.id) || 0) > 0)
+      .map((c) => ({
+        ...c,
+        saldo: saldosPorCliente.get(c.id) || 0,
+      }))
+      .sort((a, b) => b.saldo - a.saldo);
+  }, [clientes, saldosPorCliente]);
+
+  const isLoading = isLoadingClientes || isLoadingMascotas || isLoadingRecordatorios || isLoadingPagos;
+
+  // Mostrar loading mientras carga
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -86,21 +140,23 @@ export default function DashboardView() {
             <CardDescription>Saldos pendientes de pago</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {clientes
-                .filter((c) => getSaldoCliente(c.id) > 0)
-                .map((cliente) => (
+            {clientesConDeuda.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay clientes con deuda pendiente</p>
+            ) : (
+              <div className="space-y-3">
+                {clientesConDeuda.slice(0, 5).map((cliente) => (
                   <div key={cliente.id} className="flex justify-between items-center border-b pb-2 last:border-0">
                     <div>
                       <p className="font-medium text-sm">{cliente.nombre} {cliente.apellido}</p>
                       <p className="text-xs text-muted-foreground">{cliente.telefono}</p>
                     </div>
                     <span className="text-sm font-semibold text-destructive">
-                      ${getSaldoCliente(cliente.id).toLocaleString()}
+                      ${cliente.saldo.toLocaleString()}
                     </span>
                   </div>
                 ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

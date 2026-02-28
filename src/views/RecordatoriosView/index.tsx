@@ -1,5 +1,13 @@
-import { useState } from 'react';
-import { useData } from '@/context/DataContext';
+import { useState, useMemo } from 'react';
+import { useClientes } from '@/hooks/useClientes';
+import { useMascotas } from '@/hooks/useMascotas';
+import {
+  useRecordatorios,
+  useCompletarRecordatorio,
+  useCancelarRecordatorio,
+  useReprogramarRecordatorio,
+  useDeleteRecordatorio,
+} from '@/hooks/useRecordatorios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,53 +30,80 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Calendar as CalendarIcon, CheckCircle, XCircle, Trash2, Bell } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { Calendar as CalendarIcon, CheckCircle, XCircle, Trash2, Bell, Loader2 } from 'lucide-react';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ReprogramarDialog } from '@/components/recordatorios/ReprogramarDialog';
 import type { Recordatorio } from '@/lib/types';
-import { toast } from 'sonner';
 
 export default function RecordatoriosView() {
-  const {
-    recordatorios,
-    clientes,
-    mascotas,
-    completarRecordatorio,
-    cancelarRecordatorio,
-    deleteRecordatorio,
-    getRecordatoriosProximos,
-    reprogramarRecordatorio,
-  } = useData();
+  // Hooks de datos
+  const { data: recordatorios = [], isLoading: isLoadingRecordatorios } = useRecordatorios();
+  const { data: clientes = [] } = useClientes();
+  const { data: mascotas = [] } = useMascotas();
+
+  // Hooks de mutations
+  const completarRecordatorioMutation = useCompletarRecordatorio();
+  const cancelarRecordatorioMutation = useCancelarRecordatorio();
+  const reprogramarRecordatorioMutation = useReprogramarRecordatorio();
+  const deleteRecordatorioMutation = useDeleteRecordatorio();
 
   const [reprogramandoRecordatorio, setReprogramandoRecordatorio] = useState<
     Recordatorio | null
   >(null);
   const [deletingRecordatorioId, setDeletingRecordatorioId] = useState<string | null>(null);
 
-  // Filtrar recordatorios por rango de días
-  const recordatorios7Dias = getRecordatoriosProximos(7);
-  const recordatorios30Dias = getRecordatoriosProximos(30);
-  const todosRecordatorios = recordatorios
-    .filter((r) => r.estado !== 'Completado' && r.estado !== 'Cancelado')
-    .sort(
-      (a, b) => new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime()
-    );
+  // Filtrar recordatorios por rango de días usando useMemo
+  const recordatorios7Dias = useMemo(() => {
+    const hoy = new Date();
+    const limite = addDays(hoy, 7);
+    return recordatorios
+      .filter((r) => {
+        if (r.estado === 'Completado' || r.estado === 'Cancelado') return false;
+        const fechaRec = new Date(r.fechaRecordatorio);
+        return fechaRec <= limite;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime()
+      );
+  }, [recordatorios]);
+
+  const recordatorios30Dias = useMemo(() => {
+    const hoy = new Date();
+    const limite = addDays(hoy, 30);
+    return recordatorios
+      .filter((r) => {
+        if (r.estado === 'Completado' || r.estado === 'Cancelado') return false;
+        const fechaRec = new Date(r.fechaRecordatorio);
+        return fechaRec <= limite;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime()
+      );
+  }, [recordatorios]);
+
+  const todosRecordatorios = useMemo(() => {
+    return recordatorios
+      .filter((r) => r.estado !== 'Completado' && r.estado !== 'Cancelado')
+      .sort(
+        (a, b) =>
+          new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime()
+      );
+  }, [recordatorios]);
 
   const handleCompletar = (id: string) => {
-    completarRecordatorio(id);
-    toast.success('Recordatorio completado');
+    completarRecordatorioMutation.mutate(id);
   };
 
   const handleCancelar = (id: string) => {
-    cancelarRecordatorio(id);
-    toast.success('Recordatorio cancelado');
+    cancelarRecordatorioMutation.mutate(id);
   };
 
   const handleDeleteRecordatorio = () => {
     if (deletingRecordatorioId) {
-      deleteRecordatorio(deletingRecordatorioId);
-      toast.success('Recordatorio eliminado');
+      deleteRecordatorioMutation.mutate(deletingRecordatorioId);
       setDeletingRecordatorioId(null);
     }
   };
@@ -77,14 +112,16 @@ export default function RecordatoriosView() {
     setReprogramandoRecordatorio(recordatorio);
   };
 
-  const handleReprogramarSubmit = (data: { fechaRecordatorio: Date; notasReprogramacion?: string }) => {
+  const handleReprogramarSubmit = (data: {
+    fechaRecordatorio: Date;
+    notasReprogramacion?: string;
+  }) => {
     if (reprogramandoRecordatorio) {
-      reprogramarRecordatorio(
-        reprogramandoRecordatorio.id,
-        data.fechaRecordatorio,
-        data.notasReprogramacion
-      );
-      toast.success('Recordatorio reprogramado');
+      reprogramarRecordatorioMutation.mutate({
+        id: reprogramandoRecordatorio.id,
+        nuevaFecha: data.fechaRecordatorio,
+        notas: data.notasReprogramacion,
+      });
       setReprogramandoRecordatorio(null);
     }
   };
@@ -247,46 +284,52 @@ export default function RecordatoriosView() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="7dias" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="7dias">
-                Próximos 7 días
-                {recordatorios7Dias.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {recordatorios7Dias.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="30dias">
-                Próximos 30 días
-                {recordatorios30Dias.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {recordatorios30Dias.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="todos">
-                Todos
-                {todosRecordatorios.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {todosRecordatorios.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
+          {isLoadingRecordatorios ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Tabs defaultValue="7dias" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="7dias">
+                  Próximos 7 días
+                  {recordatorios7Dias.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {recordatorios7Dias.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="30dias">
+                  Próximos 30 días
+                  {recordatorios30Dias.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {recordatorios30Dias.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="todos">
+                  Todos
+                  {todosRecordatorios.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {todosRecordatorios.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="7dias" className="mt-6">
-              {renderRecordatoriosTable(recordatorios7Dias)}
-            </TabsContent>
+              <TabsContent value="7dias" className="mt-6">
+                {renderRecordatoriosTable(recordatorios7Dias)}
+              </TabsContent>
 
-            <TabsContent value="30dias" className="mt-6">
-              {renderRecordatoriosTable(recordatorios30Dias)}
-            </TabsContent>
+              <TabsContent value="30dias" className="mt-6">
+                {renderRecordatoriosTable(recordatorios30Dias)}
+              </TabsContent>
 
-            <TabsContent value="todos" className="mt-6">
-              {renderRecordatoriosTable(todosRecordatorios)}
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="todos" className="mt-6">
+                {renderRecordatoriosTable(todosRecordatorios)}
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
 

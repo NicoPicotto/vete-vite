@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { recordatorioSchema, type RecordatorioFormValues } from '@/lib/schemas';
+import { useMascotasByCliente } from '@/hooks/useMascotas';
+import { useCreateRecordatorio } from '@/hooks/useRecordatorios';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,14 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useData } from '@/context/DataContext';
 import { Calendar, Clock } from 'lucide-react';
 
 interface RecordatorioFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: RecordatorioFormValues) => void;
   clienteId: string; // Para filtrar las mascotas del cliente
+  historiaClinicaId?: string; // Opcional - si viene desde historia clínica
 }
 
 // Atajos de fecha
@@ -43,16 +44,17 @@ const ATAJOS_FECHA = [
 export function RecordatorioForm({
   open,
   onOpenChange,
-  onSubmit,
   clienteId,
+  historiaClinicaId,
 }: RecordatorioFormProps) {
-  const { getMascotasByClienteId } = useData();
-  const mascotas = getMascotasByClienteId(clienteId);
+  // Hooks de datos
+  const { data: mascotas = [] } = useMascotasByCliente(clienteId);
+  const createRecordatorioMutation = useCreateRecordatorio();
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
     setValue,
     watch,
@@ -100,7 +102,11 @@ export function RecordatorioForm({
   };
 
   const handleFormSubmit = async (data: RecordatorioFormValues) => {
-    await onSubmit(data);
+    await createRecordatorioMutation.mutateAsync({
+      ...data,
+      clienteId,
+      historiaClinicaId,
+    });
     reset();
     onOpenChange(false);
   };
@@ -225,8 +231,8 @@ export function RecordatorioForm({
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creando...' : 'Crear Recordatorio'}
+            <Button type="submit" disabled={createRecordatorioMutation.isPending}>
+              {createRecordatorioMutation.isPending ? 'Creando...' : 'Crear Recordatorio'}
             </Button>
           </DialogFooter>
         </form>

@@ -35,9 +35,9 @@ const dbToHistoriaClinica = (db: HistoriaClinicaDB): HistoriaClinica => ({
 });
 
 // Convertir de TS (camelCase) a DB (snake_case)
-const historiaClinicaToDb = (historia: HistoriaClinicaFormData) => ({
+const historiaClinicaToDb = (historia: HistoriaClinicaFormData & { fecha?: Date }) => ({
   mascota_id: historia.mascotaId,
-  fecha: new Date().toISOString(),
+  fecha: historia.fecha ? historia.fecha.toISOString() : new Date().toISOString(),
   motivo_consulta: historia.motivoConsulta,
   diagnostico: historia.diagnostico,
   tratamiento: historia.tratamiento,

@@ -22,12 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useData } from '@/context/DataContext';
+import { useClientes } from '@/hooks/useClientes';
+import { useCreateItemPago, useUpdateItemPago } from '@/hooks/usePagos';
 
 interface PagoItemFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: ItemPagoFormValues) => void;
+  onSubmit: () => void;
   initialData?: ItemPago;
   mode: 'create' | 'edit';
   clienteId?: string; // Si se provee, se pre-asigna y oculta el select
@@ -41,7 +42,9 @@ export function PagoItemForm({
   mode,
   clienteId: propClienteId,
 }: PagoItemFormProps) {
-  const { clientes, getClienteById } = useData();
+  const { data: clientes = [] } = useClientes();
+  const createItemPagoMutation = useCreateItemPago();
+  const updateItemPagoMutation = useUpdateItemPago();
 
   const {
     register,
@@ -58,29 +61,41 @@ export function PagoItemForm({
 
   // Reset form cuando cambia initialData o mode
   useEffect(() => {
-    if (initialData && mode === 'edit') {
-      reset({
-        clienteId: initialData.clienteId,
-        descripcion: initialData.descripcion,
-        monto: initialData.monto,
-        fecha: initialData.fecha,
-        entregaInicial: 0,
-      });
-    } else if (mode === 'create') {
-      reset({
-        clienteId: propClienteId || '',
-        descripcion: '',
-        monto: 0,
-        fecha: new Date(),
-        entregaInicial: 0,
-      });
+    if (open) {
+      if (initialData && mode === 'edit') {
+        reset({
+          clienteId: initialData.clienteId,
+          descripcion: initialData.descripcion,
+          monto: initialData.monto,
+          fecha: initialData.fecha,
+          entregaInicial: 0,
+        });
+      } else if (mode === 'create') {
+        reset({
+          clienteId: propClienteId || '',
+          descripcion: '',
+          monto: 0,
+          fecha: new Date(),
+          entregaInicial: 0,
+        });
+      }
     }
-  }, [initialData, mode, reset, propClienteId]);
+  }, [initialData, mode, reset, propClienteId, open]);
 
   const handleFormSubmit = async (data: ItemPagoFormValues) => {
-    await onSubmit(data);
+    if (mode === 'create') {
+      await createItemPagoMutation.mutateAsync(data);
+    } else if (initialData) {
+      await updateItemPagoMutation.mutateAsync({
+        id: initialData.id,
+        data: {
+          descripcion: data.descripcion,
+          monto: data.monto,
+        },
+      });
+    }
     reset();
-    onOpenChange(false);
+    onSubmit();
   };
 
   const handleClose = (open: boolean) => {
@@ -88,6 +103,10 @@ export function PagoItemForm({
       reset();
     }
     onOpenChange(open);
+  };
+
+  const getClienteById = (id: string) => {
+    return clientes.find((c) => c.id === id);
   };
 
   return (
