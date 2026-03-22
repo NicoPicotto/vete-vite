@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -69,6 +70,22 @@ export function VentaForm({
 
   // Buscar cliente actual para mostrar nombre
   const clienteActual = clientes.find((c) => c.id === clienteId);
+
+  // Preparar items para combobox de clientes (value usado para búsqueda)
+  const clientesItems = clientes.map((c) => ({
+    value: `${c.nombre} ${c.apellido} ${c.telefono}`.toLowerCase(),
+    label: `${c.nombre} ${c.apellido} - ${c.telefono}`,
+    id: c.id,
+  }));
+
+  // Preparar items para combobox de productos
+  const productosItems = productos
+    .filter((p) => p.cantidadExistente > 0)
+    .map((p) => ({
+      value: `${p.nombre} ${p.categoria}`.toLowerCase(),
+      label: `${p.nombre} - $${p.precioVenta} (Stock: ${p.cantidadExistente})`,
+      id: p.id,
+    }));
 
   // Sync cart to form items whenever cart changes
   useEffect(() => {
@@ -168,22 +185,24 @@ export function VentaForm({
                 <span className="text-muted-foreground">- {clienteActual.telefono}</span>
               </div>
             ) : (
-              // Modo normal: selector de cliente
-              <Select
+              // Modo normal: combobox de cliente con búsqueda
+              <Combobox
+                items={clientesItems}
                 value={clienteId}
-                onValueChange={(value) => setValue('clienteId', value)}
+                onValueChange={(value) => setValue('clienteId', value || '')}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientes.map((cliente) => (
-                    <SelectItem key={cliente.id} value={cliente.id}>
-                      {cliente.nombre} {cliente.apellido} - {cliente.telefono}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <ComboboxInput placeholder="Buscar cliente..." />
+                <ComboboxContent>
+                  <ComboboxEmpty>No se encontró ningún cliente.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item) => (
+                      <ComboboxItem key={item.id} value={item.id}>
+                        {item.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             )}
             {errors.clienteId && (
               <p className="text-sm text-red-500">{errors.clienteId.message}</p>
@@ -248,22 +267,25 @@ export function VentaForm({
         <CardContent className="space-y-4">
           {/* Selector de productos */}
           <div className="grid grid-cols-[1fr_100px_auto] gap-4 items-end">
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="producto">Producto</Label>
-              <Select value={selectedProductoId} onValueChange={setSelectedProductoId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un producto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {productos
-                    .filter((p) => p.cantidadExistente > 0) // Solo productos con stock
-                    .map((producto) => (
-                      <SelectItem key={producto.id} value={producto.id}>
-                        {producto.nombre} - ${producto.precioVenta} (Stock: {producto.cantidadExistente})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                items={productosItems}
+                value={selectedProductoId}
+                onValueChange={(value) => setSelectedProductoId(value || '')}
+              >
+                <ComboboxInput placeholder="Buscar producto..." />
+                <ComboboxContent>
+                  <ComboboxEmpty>No se encontró ningún producto.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item) => (
+                      <ComboboxItem key={item.id} value={item.id}>
+                        {item.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </div>
 
             <div className="space-y-2">
