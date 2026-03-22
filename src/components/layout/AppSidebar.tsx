@@ -5,6 +5,8 @@ import {
   PawPrint,
   CreditCard,
   Bell,
+  Package,
+  ShoppingCart,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -29,6 +31,8 @@ const navigation: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Clientes', href: '/clientes', icon: Users },
   { title: 'Mascotas', href: '/mascotas', icon: PawPrint },
+  { title: 'Productos', href: '/productos', icon: Package },
+  { title: 'Ventas', href: '/ventas', icon: ShoppingCart },
   { title: 'Pagos', href: '/pagos', icon: CreditCard },
   { title: 'Recordatorios', href: '/recordatorios', icon: Bell },
 ];

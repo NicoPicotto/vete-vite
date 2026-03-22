@@ -81,6 +81,13 @@ export const useUpdateItemPago = () => {
       queryClient.invalidateQueries({ queryKey: ['items-pago', 'cliente', updatedItem.clienteId] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       queryClient.invalidateQueries({ queryKey: ['cliente', updatedItem.clienteId] });
+
+      // Si el item está asociado a una venta, invalidar cache de ventas
+      if (updatedItem.ventaId) {
+        queryClient.invalidateQueries({ queryKey: ['ventas'] });
+        queryClient.invalidateQueries({ queryKey: ['venta', updatedItem.ventaId] });
+      }
+
       toast.success('Item de pago actualizado exitosamente');
     },
     onError: (error: Error) => {
@@ -96,10 +103,22 @@ export const useDeleteItemPago = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deleteItemPago(id),
-    onSuccess: () => {
+    mutationFn: async (id: string) => {
+      // Obtener el item ANTES de eliminarlo para saber si está asociado a una venta
+      const itemPago = await getItemPagoById(id);
+      await deleteItemPago(id);
+      return itemPago; // Retornar para usar en onSuccess
+    },
+    onSuccess: (deletedItem) => {
       queryClient.invalidateQueries({ queryKey: ['items-pago'] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
+
+      // Si el item estaba asociado a una venta, invalidar cache de ventas
+      if (deletedItem.ventaId) {
+        queryClient.invalidateQueries({ queryKey: ['ventas'] });
+        queryClient.invalidateQueries({ queryKey: ['venta', deletedItem.ventaId] });
+      }
+
       toast.success('Item de pago eliminado exitosamente');
     },
     onError: (error: Error) => {
@@ -117,10 +136,22 @@ export const useCreatePagoParcial = () => {
   return useMutation({
     mutationFn: ({ itemPagoId, monto }: { itemPagoId: string; monto: number; notas?: string }) =>
       createPagoParcial(itemPagoId, monto),
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
+      // Invalidar items de pago
       queryClient.invalidateQueries({ queryKey: ['items-pago'] });
       queryClient.invalidateQueries({ queryKey: ['item-pago', variables.itemPagoId] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
+
+      // IMPORTANTE: Obtener el item de pago actualizado para ver si está asociado a una venta
+      const itemPago = await getItemPagoById(variables.itemPagoId);
+
+      // Si el item de pago está asociado a una venta, invalidar el cache de esa venta
+      // para que se refresque el estado_pago (que se actualiza automáticamente por trigger en DB)
+      if (itemPago.ventaId) {
+        queryClient.invalidateQueries({ queryKey: ['ventas'] });
+        queryClient.invalidateQueries({ queryKey: ['venta', itemPago.ventaId] });
+      }
+
       toast.success('Pago parcial registrado exitosamente');
     },
     onError: (error: Error) => {

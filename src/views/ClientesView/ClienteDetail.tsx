@@ -1,8 +1,21 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
-import { useMascotasByCliente, useCreateMascota, useUpdateMascota, useDeleteMascota } from "@/hooks/useMascotas";
-import { useItemsPagoByCliente, useCreatePagoParcial, useDeleteItemPago } from "@/hooks/usePagos";
+import {
+   useCliente,
+   useUpdateCliente,
+   useDeleteCliente,
+} from "@/hooks/useClientes";
+import {
+   useMascotasByCliente,
+   useCreateMascota,
+   useUpdateMascota,
+   useDeleteMascota,
+} from "@/hooks/useMascotas";
+import {
+   useItemsPagoByCliente,
+   useCreatePagoParcial,
+   useDeleteItemPago,
+} from "@/hooks/usePagos";
 import {
    useRecordatoriosByCliente,
    useCompletarRecordatorio,
@@ -10,6 +23,7 @@ import {
    useReprogramarRecordatorio,
    useDeleteRecordatorio,
 } from "@/hooks/useRecordatorios";
+import { useVentasByCliente, useCreateVenta } from "@/hooks/useVentas";
 import {
    Card,
    CardContent,
@@ -52,6 +66,7 @@ import {
    CheckCircle,
    XCircle,
    Loader2,
+   ShoppingCart,
 } from "lucide-react";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { MascotaForm } from "@/components/mascotas/MascotaForm";
@@ -59,11 +74,13 @@ import { PagoItemForm } from "@/components/pagos/PagoItemForm";
 import { PagoParcialForm } from "@/components/pagos/PagoParcialForm";
 import { RecordatorioForm } from "@/components/recordatorios/RecordatorioForm";
 import { ReprogramarDialog } from "@/components/recordatorios/ReprogramarDialog";
+import { VentaFormDialog } from "@/components/ventas/VentaFormDialog";
 import type {
    ClienteFormValues,
    MascotaFormValues,
    PagoParcialFormValues,
    ReprogramarRecordatorioFormValues,
+   VentaFormValues,
 } from "@/lib/schemas";
 import type { ItemPago, Recordatorio } from "@/lib/types";
 import { format } from "date-fns";
@@ -74,18 +91,24 @@ export default function ClienteDetail() {
    const navigate = useNavigate();
 
    // TanStack Query hooks para cliente desde Supabase
-   const { data: cliente, isLoading: isLoadingCliente, error: errorCliente } = useCliente(id!);
+   const {
+      data: cliente,
+      isLoading: isLoadingCliente,
+      error: errorCliente,
+   } = useCliente(id!);
    const updateClienteMutation = useUpdateCliente();
    const deleteClienteMutation = useDeleteCliente();
 
    // TanStack Query hooks para mascotas desde Supabase
-   const { data: mascotas = [], isLoading: isLoadingMascotas } = useMascotasByCliente(id!);
+   const { data: mascotas = [], isLoading: isLoadingMascotas } =
+      useMascotasByCliente(id!);
    const createMascotaMutation = useCreateMascota();
    const updateMascotaMutation = useUpdateMascota();
    const deleteMascotaMutation = useDeleteMascota();
 
    // TanStack Query hooks para pagos desde Supabase
-   const { data: itemsPago = [], isLoading: isLoadingPagos } = useItemsPagoByCliente(id!);
+   const { data: itemsPago = [], isLoading: isLoadingPagos } =
+      useItemsPagoByCliente(id!);
    const createPagoParcialMutation = useCreatePagoParcial();
    const deleteItemPagoMutation = useDeleteItemPago();
 
@@ -96,6 +119,12 @@ export default function ClienteDetail() {
    const cancelarRecordatorioMutation = useCancelarRecordatorio();
    const reprogramarRecordatorioMutation = useReprogramarRecordatorio();
    const deleteRecordatorioMutation = useDeleteRecordatorio();
+
+   // Hooks de ventas
+   const { data: ventas = [], isLoading: isLoadingVentas } = useVentasByCliente(
+      id!,
+   );
+   const createVentaMutation = useCreateVenta();
 
    const [isEditFormOpen, setIsEditFormOpen] = useState(false);
    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -111,8 +140,13 @@ export default function ClienteDetail() {
 
    // Estados para recordatorios
    const [isRecordatorioFormOpen, setIsRecordatorioFormOpen] = useState(false);
-   const [isReprogramarDialogOpen, setIsReprogramarDialogOpen] = useState(false);
-   const [selectedRecordatorio, setSelectedRecordatorio] = useState<Recordatorio | null>(null);
+   const [isReprogramarDialogOpen, setIsReprogramarDialogOpen] =
+      useState(false);
+   const [selectedRecordatorio, setSelectedRecordatorio] =
+      useState<Recordatorio | null>(null);
+
+   // Estados para ventas
+   const [isVentaFormOpen, setIsVentaFormOpen] = useState(false);
 
    const handleEditCliente = (data: ClienteFormValues) => {
       updateClienteMutation.mutate(
@@ -121,7 +155,7 @@ export default function ClienteDetail() {
             onSuccess: () => {
                setIsEditFormOpen(false);
             },
-         }
+         },
       );
    };
 
@@ -154,7 +188,7 @@ export default function ClienteDetail() {
                   setEditingMascota(null);
                   setIsMascotaFormOpen(false);
                },
-            }
+            },
          );
       }
    };
@@ -230,7 +264,9 @@ export default function ClienteDetail() {
       setIsReprogramarDialogOpen(true);
    };
 
-   const handleReprogramarSubmit = (data: ReprogramarRecordatorioFormValues) => {
+   const handleReprogramarSubmit = (
+      data: ReprogramarRecordatorioFormValues,
+   ) => {
       if (selectedRecordatorio) {
          reprogramarRecordatorioMutation.mutate({
             id: selectedRecordatorio.id,
@@ -252,10 +288,25 @@ export default function ClienteDetail() {
       }
    };
 
-   const handleDeleteRecordatorio = (recordatorioId: string, titulo: string) => {
+   const handleDeleteRecordatorio = (
+      recordatorioId: string,
+      titulo: string,
+   ) => {
       if (confirm(`¿Estás seguro de eliminar el recordatorio "${titulo}"?`)) {
          deleteRecordatorioMutation.mutate(recordatorioId);
       }
+   };
+
+   // ============================================
+   // HANDLERS DE VENTAS
+   // ============================================
+
+   const handleCreateVenta = (data: VentaFormValues) => {
+      createVentaMutation.mutate(data, {
+         onSuccess: () => {
+            setIsVentaFormOpen(false);
+         },
+      });
    };
 
    // Mostrar loading
@@ -270,9 +321,11 @@ export default function ClienteDetail() {
             </Button>
             <Card>
                <CardContent className='pt-6 flex justify-center'>
-                  <div className="flex items-center gap-2">
-                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                     <p className='text-muted-foreground'>Cargando cliente...</p>
+                  <div className='flex items-center gap-2'>
+                     <div className='h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+                     <p className='text-muted-foreground'>
+                        Cargando cliente...
+                     </p>
                   </div>
                </CardContent>
             </Card>
@@ -293,7 +346,9 @@ export default function ClienteDetail() {
             <Card>
                <CardContent className='pt-6'>
                   <p className='text-destructive mb-2'>
-                     {errorCliente ? 'Error al cargar cliente' : 'Cliente no encontrado'}
+                     {errorCliente
+                        ? "Error al cargar cliente"
+                        : "Cliente no encontrado"}
                   </p>
                   {errorCliente && (
                      <p className='text-sm text-muted-foreground'>
@@ -419,7 +474,9 @@ export default function ClienteDetail() {
                   <div>
                      <CardTitle>Mascotas</CardTitle>
                      <CardDescription>
-                        {isLoadingMascotas ? 'Cargando...' : `${mascotas.length} mascota${mascotas.length !== 1 ? "s" : ""} registrada${mascotas.length !== 1 ? "s" : ""}`}
+                        {isLoadingMascotas
+                           ? "Cargando..."
+                           : `${mascotas.length} mascota${mascotas.length !== 1 ? "s" : ""} registrada${mascotas.length !== 1 ? "s" : ""}`}
                      </CardDescription>
                   </div>
                   <Button
@@ -682,7 +739,9 @@ export default function ClienteDetail() {
                            <TableHead>Mascota</TableHead>
                            <TableHead>Título</TableHead>
                            <TableHead>Estado</TableHead>
-                           <TableHead className='text-right'>Acciones</TableHead>
+                           <TableHead className='text-right'>
+                              Acciones
+                           </TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
@@ -718,7 +777,8 @@ export default function ClienteDetail() {
                                                 { locale: es },
                                              )}
                                           </p>
-                                          {recordatorio.estado !== "Completado" &&
+                                          {recordatorio.estado !==
+                                             "Completado" &&
                                              recordatorio.estado !==
                                                 "Cancelado" && (
                                                 <p className='text-xs text-muted-foreground'>
@@ -734,7 +794,9 @@ export default function ClienteDetail() {
                                        </div>
                                     </TableCell>
                                     <TableCell>
-                                       {mascota ? mascota.nombre : "Desconocida"}
+                                       {mascota
+                                          ? mascota.nombre
+                                          : "Desconocida"}
                                     </TableCell>
                                     <TableCell>
                                        <div>
@@ -751,7 +813,8 @@ export default function ClienteDetail() {
                                     <TableCell>
                                        <Badge
                                           variant={
-                                             recordatorio.estado === "Completado"
+                                             recordatorio.estado ===
+                                             "Completado"
                                                 ? "default"
                                                 : recordatorio.estado ===
                                                     "Reprogramado"
@@ -767,7 +830,8 @@ export default function ClienteDetail() {
                                     </TableCell>
                                     <TableCell className='text-right'>
                                        <div className='flex justify-end gap-2'>
-                                          {recordatorio.estado !== "Completado" &&
+                                          {recordatorio.estado !==
+                                             "Completado" &&
                                              recordatorio.estado !==
                                                 "Cancelado" && (
                                                 <>
@@ -833,6 +897,100 @@ export default function ClienteDetail() {
             </CardContent>
          </Card>
 
+         {/* ============================================ */}
+         {/* VENTAS DEL CLIENTE */}
+         {/* ============================================ */}
+         <Card className='mt-6'>
+            <CardHeader>
+               <div className='flex justify-between items-center'>
+                  <div>
+                     <CardTitle>Ventas</CardTitle>
+                     <CardDescription>
+                        {isLoadingVentas
+                           ? "Cargando..."
+                           : `${ventas.length} venta${ventas.length !== 1 ? "s" : ""} registrada${ventas.length !== 1 ? "s" : ""}`}
+                     </CardDescription>
+                  </div>
+                  <Button
+                     onClick={() => setIsVentaFormOpen(true)}
+                     disabled={isLoadingVentas}
+                  >
+                     <ShoppingCart className='mr-2 h-4 w-4' />
+                     Nueva Venta
+                  </Button>
+               </div>
+            </CardHeader>
+            <CardContent>
+               {isLoadingVentas ? (
+                  <div className='flex justify-center items-center py-8'>
+                     <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
+                  </div>
+               ) : ventas.length === 0 ? (
+                  <p className='text-sm text-muted-foreground'>
+                     No hay ventas registradas para este cliente.
+                  </p>
+               ) : (
+                  <Table>
+                     <TableHeader>
+                        <TableRow>
+                           <TableHead>Fecha</TableHead>
+                           <TableHead className='text-right'>Total</TableHead>
+                           <TableHead>Estado Pago</TableHead>
+                           <TableHead className='text-right'>
+                              Acciones
+                           </TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {ventas.map((venta) => {
+                           const estadoBadge =
+                              venta.estadoPago === "Pagado" ? (
+                                 <Badge
+                                    variant='default'
+                                    className='bg-green-600'
+                                 >
+                                    Pagado
+                                 </Badge>
+                              ) : venta.estadoPago === "Pagado Parcial" ? (
+                                 <Badge
+                                    variant='default'
+                                    className='bg-yellow-600'
+                                 >
+                                    Pagado Parcial
+                                 </Badge>
+                              ) : (
+                                 <Badge variant='destructive'>Pendiente</Badge>
+                              );
+
+                           return (
+                              <TableRow key={venta.id}>
+                                 <TableCell>
+                                    {format(
+                                       new Date(venta.fecha),
+                                       "d 'de' MMMM, yyyy",
+                                       { locale: es },
+                                    )}
+                                 </TableCell>
+                                 <TableCell className='text-right font-semibold'>
+                                    ${venta.total}
+                                 </TableCell>
+                                 <TableCell>{estadoBadge}</TableCell>
+                                 <TableCell className='text-right'>
+                                    <Button variant='ghost' size='sm' asChild>
+                                       <Link to={`/ventas/${venta.id}`}>
+                                          <Eye className='h-4 w-4' />
+                                       </Link>
+                                    </Button>
+                                 </TableCell>
+                              </TableRow>
+                           );
+                        })}
+                     </TableBody>
+                  </Table>
+               )}
+            </CardContent>
+         </Card>
+
          {/* Formulario de Edición Cliente */}
          <ClienteForm
             open={isEditFormOpen}
@@ -891,6 +1049,16 @@ export default function ClienteDetail() {
             onOpenChange={setIsReprogramarDialogOpen}
             onSubmit={handleReprogramarSubmit}
             recordatorio={selectedRecordatorio}
+         />
+
+         {/* Diálogo de Nueva Venta */}
+         <VentaFormDialog
+            open={isVentaFormOpen}
+            onOpenChange={setIsVentaFormOpen}
+            onSubmit={handleCreateVenta}
+            initialClienteId={id}
+            readonlyCliente={true}
+            isSubmitting={createVentaMutation.isPending}
          />
 
          {/* Diálogo de Confirmación de Eliminación */}

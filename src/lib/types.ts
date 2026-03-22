@@ -86,6 +86,7 @@ export interface PagoParcial {
 export interface ItemPago {
   id: string;
   historiaClinicaId?: string; // Puede estar asociado a una consulta específica
+  ventaId?: string; // Puede estar asociado a una venta (nuevo)
   clienteId: string;
   descripcion: string;
   monto: number;
@@ -162,6 +163,68 @@ export interface ResultadoBusqueda {
   subtexto?: string; // Información adicional
   cliente?: Cliente;
   mascota?: Mascota;
+}
+
+// ============================================
+// PRODUCTOS (STOCK)
+// ============================================
+export type CategoriaProducto = 'PetShop' | 'Farmacia' | 'Medicina';
+
+export interface Producto {
+  id: string;
+  nombre: string;
+  categoria: CategoriaProducto;
+  sku?: string;
+  precioCosto: number;
+  precioVenta: number;
+  cantidadExistente: number;
+  cantidadIdeal: number;
+  notas?: string;
+  fechaCreacion: Date;
+  fechaActualizacion: Date;
+}
+
+export type ProductoFormData = Omit<Producto, 'id' | 'fechaCreacion' | 'fechaActualizacion'>;
+
+// ============================================
+// VENTAS
+// ============================================
+export interface VentaItem {
+  id: string;
+  ventaId: string;
+  productoId: string;
+  cantidad: number;
+  precioUnitario: number; // Snapshot del precio al momento de la venta
+  subtotal: number; // cantidad * precioUnitario
+}
+
+export interface Venta {
+  id: string;
+  clienteId: string;
+  fecha: Date;
+  total: number; // Calculado automáticamente desde items
+  estadoPago: EstadoPago;
+  notas?: string;
+  itemPagoId?: string; // ItemPago generado automáticamente
+  fechaCreacion: Date;
+  items?: VentaItem[]; // Items de la venta (opcional, viene de JOIN)
+}
+
+export type VentaFormData = Omit<Venta, 'id' | 'fechaCreacion' | 'estadoPago' | 'total' | 'itemPagoId' | 'items'>;
+
+// Para el formulario de nueva venta (carrito)
+export interface VentaItemInput {
+  productoId: string;
+  cantidad: number;
+  precioUnitario: number; // Se obtiene del producto
+}
+
+export interface VentaFormInput {
+  clienteId: string;
+  fecha: Date;
+  notas?: string;
+  items: VentaItemInput[];
+  pagoCompleto?: boolean; // Si está marcado, se registra como pagado al 100%
 }
 
 // ============================================

@@ -7,6 +7,7 @@ interface ItemPagoDB {
   id: string;
   cliente_id: string;
   historia_clinica_id: string | null;
+  venta_id: string | null; // AGREGADO: Referencia a venta si fue generado por una venta
   descripcion: string;
   monto: number;
   fecha: string;
@@ -21,6 +22,7 @@ const dbToItemPago = (db: ItemPagoDB): ItemPago => ({
   id: db.id,
   clienteId: db.cliente_id,
   historiaClinicaId: db.historia_clinica_id || undefined,
+  ventaId: db.venta_id || undefined, // AGREGADO: Mapear venta_id
   descripcion: db.descripcion,
   monto: db.monto,
   fecha: new Date(db.fecha),

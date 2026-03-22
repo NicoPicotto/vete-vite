@@ -188,3 +188,78 @@ export const reprogramarRecordatorioSchema = z.object({
 });
 
 export type ReprogramarRecordatorioFormValues = z.infer<typeof reprogramarRecordatorioSchema>;
+
+// ============================================
+// PRODUCTO SCHEMA
+// ============================================
+
+export const productoSchema = z.object({
+  nombre: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(200, 'El nombre no puede exceder 200 caracteres'),
+  categoria: z.enum(['PetShop', 'Farmacia', 'Medicina']),
+  sku: z
+    .string()
+    .max(50, 'El SKU no puede exceder 50 caracteres')
+    .optional()
+    .or(z.literal('')),
+  precioCosto: z
+    .number()
+    .min(0, 'El precio de costo no puede ser negativo')
+    .max(999999999, 'El precio es excesivo'),
+  precioVenta: z
+    .number()
+    .positive('El precio de venta debe ser positivo')
+    .max(999999999, 'El precio es excesivo'),
+  cantidadExistente: z
+    .number()
+    .int('Debe ser un número entero')
+    .min(0, 'La cantidad no puede ser negativa')
+    .max(999999, 'La cantidad es excesiva'),
+  cantidadIdeal: z
+    .number()
+    .int('Debe ser un número entero')
+    .min(0, 'La cantidad no puede ser negativa')
+    .max(999999, 'La cantidad es excesiva'),
+  notas: z
+    .string()
+    .max(1000, 'Las notas no pueden exceder 1000 caracteres')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type ProductoFormValues = z.infer<typeof productoSchema>;
+
+// ============================================
+// VENTA SCHEMA
+// ============================================
+
+export const ventaItemInputSchema = z.object({
+  productoId: z.string().min(1, 'Debes seleccionar un producto'),
+  cantidad: z
+    .number()
+    .int('Debe ser un número entero')
+    .positive('La cantidad debe ser positiva')
+    .max(999999, 'La cantidad es excesiva'),
+  precioUnitario: z
+    .number()
+    .min(0, 'El precio no puede ser negativo')
+    .max(999999999, 'El precio es excesivo'),
+});
+
+export const ventaSchema = z.object({
+  clienteId: z.string().min(1, 'Debes seleccionar un cliente'),
+  fecha: z.date(),
+  notas: z
+    .string()
+    .max(1000, 'Las notas no pueden exceder 1000 caracteres')
+    .optional()
+    .or(z.literal('')),
+  items: z
+    .array(ventaItemInputSchema)
+    .min(1, 'Debes agregar al menos un producto a la venta'),
+  pagoCompleto: z.boolean().optional(), // Si está marcado, se paga el 100% al crear
+});
+
+export type VentaFormValues = z.infer<typeof ventaSchema>;
