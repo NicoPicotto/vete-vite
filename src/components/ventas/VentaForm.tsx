@@ -188,15 +188,19 @@ export function VentaForm({
               // Modo normal: combobox de cliente con búsqueda
               <Combobox
                 items={clientesItems}
-                value={clienteId}
-                onValueChange={(value) => setValue('clienteId', value || '')}
+                value={clienteActual ? `${clienteActual.nombre} ${clienteActual.apellido} - ${clienteActual.telefono}` : ''}
+                onValueChange={(value) => {
+                  // Buscar el ID del cliente seleccionado por su label
+                  const selectedCliente = clientesItems.find(item => item.label === value);
+                  setValue('clienteId', selectedCliente?.id || '');
+                }}
               >
                 <ComboboxInput placeholder="Buscar cliente..." />
                 <ComboboxContent>
                   <ComboboxEmpty>No se encontró ningún cliente.</ComboboxEmpty>
                   <ComboboxList>
                     {(item) => (
-                      <ComboboxItem key={item.id} value={item.id}>
+                      <ComboboxItem key={item.id} value={item.label}>
                         {item.label}
                       </ComboboxItem>
                     )}
@@ -271,15 +275,23 @@ export function VentaForm({
               <Label htmlFor="producto">Producto</Label>
               <Combobox
                 items={productosItems}
-                value={selectedProductoId}
-                onValueChange={(value) => setSelectedProductoId(value || '')}
+                value={
+                  selectedProductoId
+                    ? productosItems.find((p) => p.id === selectedProductoId)?.label || ''
+                    : ''
+                }
+                onValueChange={(value) => {
+                  // Buscar el ID del producto seleccionado por su label
+                  const selectedProducto = productosItems.find((item) => item.label === value);
+                  setSelectedProductoId(selectedProducto?.id || '');
+                }}
               >
                 <ComboboxInput placeholder="Buscar producto..." />
                 <ComboboxContent>
                   <ComboboxEmpty>No se encontró ningún producto.</ComboboxEmpty>
                   <ComboboxList>
                     {(item) => (
-                      <ComboboxItem key={item.id} value={item.id}>
+                      <ComboboxItem key={item.id} value={item.label}>
                         {item.label}
                       </ComboboxItem>
                     )}
