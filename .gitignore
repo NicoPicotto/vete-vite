@@ -12,6 +12,7 @@ MODULOS_VENTAS_PRODUCTOS.md
 supabase-schema-ventas-productos.sql
 supabase-schema.sql
 .env
+supabase-migrations
 
 node_modules
 dist

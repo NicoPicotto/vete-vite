@@ -87,7 +87,7 @@ export interface ItemPago {
   id: string;
   historiaClinicaId?: string; // Puede estar asociado a una consulta específica
   ventaId?: string; // Puede estar asociado a una venta (nuevo)
-  clienteId: string;
+  clienteId?: string; // Opcional para ventas al paso (sin cliente)
   descripcion: string;
   monto: number;
   fecha: Date;
@@ -189,6 +189,8 @@ export type ProductoFormData = Omit<Producto, 'id' | 'fechaCreacion' | 'fechaAct
 // ============================================
 // VENTAS
 // ============================================
+export type MetodoPago = 'Contado' | 'Débito' | 'Crédito';
+
 export interface VentaItem {
   id: string;
   ventaId: string;
@@ -200,9 +202,10 @@ export interface VentaItem {
 
 export interface Venta {
   id: string;
-  clienteId: string;
+  clienteId?: string; // Opcional para ventas al paso
   fecha: Date;
-  total: number; // Calculado automáticamente desde items
+  total: number; // Total FINAL con recargo incluido (si aplica)
+  metodoPago: MetodoPago; // Método de pago: Contado (sin recargo), Débito (+5%), Crédito (+20%)
   estadoPago: EstadoPago;
   notas?: string;
   itemPagoId?: string; // ItemPago generado automáticamente
@@ -220,8 +223,9 @@ export interface VentaItemInput {
 }
 
 export interface VentaFormInput {
-  clienteId: string;
+  clienteId?: string; // Opcional para ventas al paso
   fecha: Date;
+  metodoPago: MetodoPago; // Método de pago con recargos
   notas?: string;
   items: VentaItemInput[];
   pagoCompleto?: boolean; // Si está marcado, se registra como pagado al 100%

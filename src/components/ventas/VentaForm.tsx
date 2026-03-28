@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ventaSchema, type VentaFormValues } from '@/lib/schemas';
-import type { Producto } from '@/lib/types';
+import type { Producto, MetodoPago } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Combobox,
   ComboboxContent,
@@ -22,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, ShoppingCart } from 'lucide-react';
 import { useClientes } from '@/hooks/useClientes';
 import { useProductos } from '@/hooks/useProductos';
+import { calcularRecargo } from '@/services/ventas.service';
 
 interface CartItem {
   producto: Producto;
@@ -33,13 +35,17 @@ interface VentaFormProps {
   isSubmitting?: boolean;
   initialClienteId?: string; // Cliente prellenado (desde ClienteDetail)
   readonlyCliente?: boolean; // Si true, no se puede cambiar el cliente
+  onCancel?: () => void; // Función personalizada de cancelación (para Dialog)
+  showCancelButton?: boolean; // Mostrar botón cancelar (default: true)
 }
 
 export function VentaForm({
   onSubmit,
   isSubmitting,
   initialClienteId,
-  readonlyCliente = false
+  readonlyCliente = false,
+  onCancel,
+  showCancelButton = true,
 }: VentaFormProps) {
   const { data: clientes = [] } = useClientes();
   const { data: productos = [] } = useProductos();
@@ -59,13 +65,15 @@ export function VentaForm({
     defaultValues: {
       clienteId: initialClienteId || '',
       fecha: new Date(),
+      metodoPago: 'Contado', // Contado por defecto
       notas: '',
       items: [],
-      pagoCompleto: false,
+      pagoCompleto: true, // Checked por defecto
     },
   });
 
   const clienteId = watch('clienteId');
+  const metodoPago = watch('metodoPago');
   const pagoCompleto = watch('pagoCompleto');
 
   // Buscar cliente actual para mostrar nombre
@@ -140,11 +148,17 @@ export function VentaForm({
     setCart(cart.filter((item) => item.producto.id !== productoId));
   };
 
-  // Calcular total
-  const total = cart.reduce(
+  // Calcular subtotal (sin recargo)
+  const subtotal = cart.reduce(
     (acc, item) => acc + item.producto.precioVenta * item.cantidad,
     0
   );
+
+  // Calcular recargo según método de pago
+  const recargo = calcularRecargo(subtotal, metodoPago);
+
+  // Calcular total final (subtotal + recargo)
+  const total = subtotal + recargo;
 
   // Enviar formulario
   const handleFormSubmit = (data: VentaFormValues) => {
@@ -175,7 +189,10 @@ export function VentaForm({
         <CardContent className="space-y-4">
           {/* Cliente */}
           <div className="space-y-2">
-            <Label htmlFor="clienteId">Cliente *</Label>
+            <Label htmlFor="clienteId">Cliente (opcional)</Label>
+            <p className="text-xs text-muted-foreground">
+              Deja en blanco para ventas al paso (sin cliente)
+            </p>
             {readonlyCliente && clienteActual ? (
               // Modo readonly: mostrar cliente fijo
               <div className="flex items-center gap-2 p-3 bg-muted rounded-md border">
@@ -195,7 +212,7 @@ export function VentaForm({
                   setValue('clienteId', selectedCliente?.id || '');
                 }}
               >
-                <ComboboxInput placeholder="Buscar cliente..." />
+                <ComboboxInput placeholder="Buscar cliente (opcional)..." />
                 <ComboboxContent>
                   <ComboboxEmpty>No se encontró ningún cliente.</ComboboxEmpty>
                   <ComboboxList>
@@ -224,6 +241,27 @@ export function VentaForm({
             />
             {errors.fecha && (
               <p className="text-sm text-red-500">{errors.fecha.message}</p>
+            )}
+          </div>
+
+          {/* Método de Pago */}
+          <div className="space-y-2">
+            <Label htmlFor="metodoPago">Método de Pago *</Label>
+            <Select
+              value={metodoPago}
+              onValueChange={(value) => setValue('metodoPago', value as MetodoPago)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar método de pago" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Contado">Contado (sin recargo)</SelectItem>
+                <SelectItem value="Débito">Débito (+5%)</SelectItem>
+                <SelectItem value="Crédito">Crédito (+20%)</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.metodoPago && (
+              <p className="text-sm text-red-500">{errors.metodoPago.message}</p>
             )}
           </div>
 
@@ -364,8 +402,31 @@ export function VentaForm({
                       </TableCell>
                     </TableRow>
                   ))}
+                  {/* Subtotal */}
                   <TableRow>
-                    <TableCell colSpan={4} className="text-right font-bold">
+                    <TableCell colSpan={4} className="text-right font-medium">
+                      Subtotal:
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${subtotal}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                  {/* Recargo (solo si aplica) */}
+                  {recargo > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-right text-amber-700 font-medium">
+                        Recargo {metodoPago === 'Débito' ? '(+5%)' : '(+20%)'}:
+                      </TableCell>
+                      <TableCell className="text-right text-amber-700 font-medium">
+                        ${recargo}
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  )}
+                  {/* Total Final */}
+                  <TableRow className="bg-muted/50">
+                    <TableCell colSpan={4} className="text-right font-bold text-lg">
                       TOTAL:
                     </TableCell>
                     <TableCell className="text-right font-bold text-lg">
@@ -381,17 +442,19 @@ export function VentaForm({
       </Card>
 
       <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => window.history.back()}
-          disabled={isSubmitting}
-        >
-          Cancelar
-        </Button>
+        {showCancelButton && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel || (() => window.history.back())}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+        )}
         <Button
           type="submit"
-          disabled={isSubmitting || cart.length === 0 || !clienteId}
+          disabled={isSubmitting || cart.length === 0}
         >
           {isSubmitting ? 'Guardando...' : 'Registrar Venta'}
         </Button>

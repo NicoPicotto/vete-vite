@@ -14,7 +14,8 @@ export default function VentasView() {
   const { data: ventas = [], isLoading, error } = useVentas();
   const { data: clientes = [] } = useClientes();
 
-  const getClienteNombre = (clienteId: string) => {
+  const getClienteNombre = (clienteId?: string) => {
+    if (!clienteId) return 'Venta al Paso';
     const cliente = clientes.find((c) => c.id === clienteId);
     return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente desconocido';
   };
@@ -94,6 +95,7 @@ export default function VentasView() {
                     <TableHead>Fecha</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Método</TableHead>
                     <TableHead>Estado de Pago</TableHead>
                     <TableHead>Notas</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -110,6 +112,15 @@ export default function VentasView() {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         ${venta.total}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={
+                          venta.metodoPago === 'Contado' ? 'bg-green-50' :
+                          venta.metodoPago === 'Débito' ? 'bg-blue-50' :
+                          'bg-amber-50'
+                        }>
+                          {venta.metodoPago}
+                        </Badge>
                       </TableCell>
                       <TableCell>{getEstadoBadge(venta.estadoPago)}</TableCell>
                       <TableCell className="max-w-[200px] truncate">
