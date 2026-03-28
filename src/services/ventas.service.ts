@@ -4,9 +4,10 @@ import type { Venta, VentaItem, VentaFormInput } from '@/lib/types';
 // Tipos para las tablas de Supabase (snake_case)
 interface VentaDB {
   id: string;
-  cliente_id: string;
+  cliente_id: string | null; // Puede ser null para ventas al paso
   fecha: string;
   total: number;
+  metodo_pago: 'Contado' | 'Débito' | 'Crédito';
   estado_pago: 'Pendiente' | 'Pagado Parcial' | 'Pagado';
   notas: string | null;
   item_pago_id: string | null;
@@ -41,9 +42,10 @@ interface VentaItemDB {
 // Convertir de DB (snake_case) a TS (camelCase)
 const dbToVenta = (db: VentaDB, items?: VentaItemDB[]): Venta => ({
   id: db.id,
-  clienteId: db.cliente_id,
+  clienteId: db.cliente_id || undefined, // Convertir null a undefined
   fecha: new Date(db.fecha),
   total: db.total,
+  metodoPago: db.metodo_pago,
   estadoPago: db.estado_pago,
   notas: db.notas || undefined,
   itemPagoId: db.item_pago_id || undefined,
@@ -127,21 +129,49 @@ export const getVentaById = async (id: string): Promise<Venta> => {
 };
 
 /**
+ * Calcular recargo según método de pago
+ * Exportada para uso en UI (mostrar recargo en tiempo real)
+ */
+export const calcularRecargo = (subtotal: number, metodoPago: 'Contado' | 'Débito' | 'Crédito'): number => {
+  switch (metodoPago) {
+    case 'Contado':
+      return 0; // Sin recargo
+    case 'Débito':
+      return Math.round(subtotal * 0.05); // +5%
+    case 'Crédito':
+      return Math.round(subtotal * 0.20); // +20%
+    default:
+      return 0;
+  }
+};
+
+/**
  * Crear una nueva venta con sus items
- * También genera automáticamente un ItemPago asociado
+ * También genera automáticamente un ItemPago asociado (solo si hay cliente)
  */
 export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => {
-  // Calcular total
-  const total = ventaData.items.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
+  // 1. Calcular subtotal (suma de productos sin recargo)
+  const subtotal = ventaData.items.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
 
-  // 1. Crear la venta
+  // 2. Calcular recargo según método de pago
+  const recargo = calcularRecargo(subtotal, ventaData.metodoPago);
+
+  // 3. Calcular total final (subtotal + recargo)
+  const total = subtotal + recargo;
+
+  // 4. Crear la venta
+  // Si es venta al paso (sin cliente) y se pagó completo, el estado es 'Pagado', sino 'Pendiente'
+  const esVentaAlPaso = !ventaData.clienteId;
+  const estadoInicial = esVentaAlPaso && ventaData.pagoCompleto ? 'Pagado' : 'Pendiente';
+
   const { data: ventaCreada, error: ventaError } = await supabase
     .from('ventas')
     .insert({
-      cliente_id: ventaData.clienteId,
+      cliente_id: ventaData.clienteId || null,
       fecha: ventaData.fecha.toISOString(),
       total,
-      estado_pago: 'Pendiente',
+      metodo_pago: ventaData.metodoPago,
+      estado_pago: estadoInicial,
       notas: ventaData.notas || null,
     })
     .select()
@@ -172,71 +202,74 @@ export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => 
     throw new Error(`Error al crear items de venta: ${itemsError.message}`);
   }
 
-  // 3. Crear ItemPago asociado automáticamente
-  // Obtener nombres de productos para descripción más descriptiva
-  const productosIds = ventaData.items.map((item) => item.productoId);
-  const { data: productosData, error: productosError } = await supabase
-    .from('productos')
-    .select('id, nombre')
-    .in('id', productosIds);
+  // 3. Crear ItemPago asociado SOLO si hay cliente (no para ventas al paso)
+  if (!esVentaAlPaso) {
+    // Obtener nombres de productos para descripción más descriptiva
+    const productosIds = ventaData.items.map((item) => item.productoId);
+    const { data: productosData, error: productosError } = await supabase
+      .from('productos')
+      .select('id, nombre')
+      .in('id', productosIds);
 
-  if (productosError) {
-    console.error('Error al obtener nombres de productos para descripción:', productosError);
+    if (productosError) {
+      console.error('Error al obtener nombres de productos para descripción:', productosError);
+    }
+
+    // Crear descripción con nombres de productos y cantidades (ej: "Pipeta 100mg x3, Shampoo x1")
+    const productosMap = new Map(productosData?.map((p) => [p.id, p.nombre]) || []);
+    const descripcionProductos = ventaData.items
+      .map((item) => {
+        const nombre = productosMap.get(item.productoId) || 'Producto';
+        return `${nombre} x${item.cantidad}`;
+      })
+      .join(', ');
+
+    // Determinar monto_pagado y estado según si se pagó completo en el momento
+    const montoPagadoInicial = ventaData.pagoCompleto ? total : 0;
+    const estadoPagoInicial: 'Pendiente' | 'Pagado Parcial' | 'Pagado' = ventaData.pagoCompleto ? 'Pagado' : 'Pendiente';
+
+    const { data: itemPagoCreado, error: itemPagoError } = await supabase
+      .from('items_pago')
+      .insert({
+        cliente_id: ventaData.clienteId,
+        venta_id: ventaId,
+        descripcion: `Venta: ${descripcionProductos}`,
+        monto: total,
+        fecha: ventaData.fecha.toISOString(),
+        estado: estadoPagoInicial,
+        monto_pagado: montoPagadoInicial,
+      })
+      .select()
+      .single();
+
+    if (itemPagoError) {
+      // Rollback: eliminar venta e items si falla la creación del ItemPago
+      await supabase.from('venta_items').delete().eq('venta_id', ventaId);
+      await supabase.from('ventas').delete().eq('id', ventaId);
+      throw new Error(`Error al crear item de pago: ${itemPagoError.message}`);
+    }
+
+    // 4. Actualizar la venta con el item_pago_id y estado_pago (si fue pago completo)
+    const updateData: { item_pago_id: string; estado_pago?: 'Pagado' } = {
+      item_pago_id: (itemPagoCreado as any).id,
+    };
+
+    // Si se pagó completo, actualizar también el estado_pago
+    if (ventaData.pagoCompleto) {
+      updateData.estado_pago = 'Pagado';
+    }
+
+    const { error: updateError } = await supabase
+      .from('ventas')
+      .update(updateData)
+      .eq('id', ventaId);
+
+    if (updateError) {
+      console.error('Error al actualizar venta con item_pago_id y estado:', updateError);
+      // No lanzamos error porque la venta ya está creada correctamente
+    }
   }
-
-  // Crear descripción con nombres de productos y cantidades (ej: "Pipeta 100mg x3, Shampoo x1")
-  const productosMap = new Map(productosData?.map((p) => [p.id, p.nombre]) || []);
-  const descripcionProductos = ventaData.items
-    .map((item) => {
-      const nombre = productosMap.get(item.productoId) || 'Producto';
-      return `${nombre} x${item.cantidad}`;
-    })
-    .join(', ');
-
-  // Determinar monto_pagado y estado según si se pagó completo en el momento
-  const montoPagadoInicial = ventaData.pagoCompleto ? total : 0;
-  const estadoInicial: 'Pendiente' | 'Pagado Parcial' | 'Pagado' = ventaData.pagoCompleto ? 'Pagado' : 'Pendiente';
-
-  const { data: itemPagoCreado, error: itemPagoError } = await supabase
-    .from('items_pago')
-    .insert({
-      cliente_id: ventaData.clienteId,
-      venta_id: ventaId,
-      descripcion: `Venta: ${descripcionProductos}`,
-      monto: total,
-      fecha: ventaData.fecha.toISOString(),
-      estado: estadoInicial,
-      monto_pagado: montoPagadoInicial,
-    })
-    .select()
-    .single();
-
-  if (itemPagoError) {
-    // Rollback: eliminar venta e items si falla la creación del ItemPago
-    await supabase.from('venta_items').delete().eq('venta_id', ventaId);
-    await supabase.from('ventas').delete().eq('id', ventaId);
-    throw new Error(`Error al crear item de pago: ${itemPagoError.message}`);
-  }
-
-  // 4. Actualizar la venta con el item_pago_id y estado_pago (si fue pago completo)
-  const updateData: { item_pago_id: string; estado_pago?: 'Pagado' } = {
-    item_pago_id: (itemPagoCreado as any).id,
-  };
-
-  // Si se pagó completo, actualizar también el estado_pago
-  if (ventaData.pagoCompleto) {
-    updateData.estado_pago = 'Pagado';
-  }
-
-  const { error: updateError } = await supabase
-    .from('ventas')
-    .update(updateData)
-    .eq('id', ventaId);
-
-  if (updateError) {
-    console.error('Error al actualizar venta con item_pago_id y estado:', updateError);
-    // No lanzamos error porque la venta ya está creada correctamente
-  }
+  // Si es venta al paso, NO se crea ItemPago
 
   // 5. Retornar la venta completa con items
   return getVentaById(ventaId);

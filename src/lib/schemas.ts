@@ -249,8 +249,9 @@ export const ventaItemInputSchema = z.object({
 });
 
 export const ventaSchema = z.object({
-  clienteId: z.string().min(1, 'Debes seleccionar un cliente'),
+  clienteId: z.string().optional().or(z.literal('')), // Cliente opcional para ventas al paso
   fecha: z.date(),
+  metodoPago: z.enum(['Contado', 'Débito', 'Crédito']), // Método de pago con recargos
   notas: z
     .string()
     .max(1000, 'Las notas no pueden exceder 1000 caracteres')

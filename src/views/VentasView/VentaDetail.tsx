@@ -28,6 +28,7 @@ export default function VentaDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { data: venta, isLoading, error } = useVenta(id || '');
+  // Solo hacer query de cliente si la venta tiene clienteId (el hook ya tiene enabled: !!id)
   const { data: cliente } = useCliente(venta?.clienteId || '');
   const { data: productos = [] } = useProductos();
   const deleteVentaMutation = useDeleteVenta();
@@ -134,6 +135,14 @@ export default function VentaDetail() {
               <p className="text-2xl font-bold">${venta.total}</p>
             </div>
             <div>
+              <p className="text-sm text-muted-foreground">Método de Pago</p>
+              <p className="font-medium">
+                {venta.metodoPago}
+                {venta.metodoPago === 'Débito' && <span className="text-xs text-muted-foreground ml-1">(+5%)</span>}
+                {venta.metodoPago === 'Crédito' && <span className="text-xs text-muted-foreground ml-1">(+20%)</span>}
+              </p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">Estado de Pago</p>
               <div className="mt-1">{getEstadoBadge(venta.estadoPago)}</div>
             </div>
@@ -153,7 +162,14 @@ export default function VentaDetail() {
             <CardDescription>Información del comprador</CardDescription>
           </CardHeader>
           <CardContent>
-            {cliente ? (
+            {!venta.clienteId ? (
+              <div className="text-center py-8">
+                <p className="font-medium text-muted-foreground">Venta al Paso</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Esta venta no está asociada a un cliente registrado
+                </p>
+              </div>
+            ) : cliente ? (
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Nombre</p>

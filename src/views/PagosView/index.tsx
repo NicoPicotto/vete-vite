@@ -141,7 +141,8 @@ export default function PagosView() {
     }
   };
 
-  const getClienteNombre = (clienteId: string) => {
+  const getClienteNombre = (clienteId: string | undefined) => {
+    if (!clienteId) return 'Venta al Paso';
     const cliente = clientes.find((c) => c.id === clienteId);
     return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
   };

@@ -73,22 +73,26 @@ export const useCreateVenta = () => {
     onSuccess: (newVenta) => {
       // Invalidar cache de ventas
       queryClient.invalidateQueries({ queryKey: ventasKeys.all });
-      queryClient.invalidateQueries({ queryKey: ventasKeys.byCliente(newVenta.clienteId) });
       queryClient.invalidateQueries({ queryKey: ventasKeys.estadisticas });
 
       // Invalidar cache de productos (stock actualizado)
       queryClient.invalidateQueries({ queryKey: productosKeys.all });
       queryClient.invalidateQueries({ queryKey: productosKeys.stockBajo });
 
-      // Invalidar cache de clientes (saldo_pendiente actualizado)
-      queryClient.invalidateQueries({ queryKey: clientesKeys.all });
-      queryClient.invalidateQueries({ queryKey: clientesKeys.detail(newVenta.clienteId) });
+      // Solo invalidar cache de cliente si hay cliente asociado (no para ventas al paso)
+      if (newVenta.clienteId) {
+        queryClient.invalidateQueries({ queryKey: ventasKeys.byCliente(newVenta.clienteId) });
+        queryClient.invalidateQueries({ queryKey: clientesKeys.all });
+        queryClient.invalidateQueries({ queryKey: clientesKeys.detail(newVenta.clienteId) });
+        // Invalidar cache de items de pago (se creó un nuevo item)
+        queryClient.invalidateQueries({ queryKey: ['items-pago'] });
+      }
 
-      // Invalidar cache de items de pago (se creó un nuevo item)
-      queryClient.invalidateQueries({ queryKey: ['items-pago'] });
-
+      const esVentaAlPaso = !newVenta.clienteId;
       toast.success('Venta registrada exitosamente', {
-        description: `Venta por $${newVenta.total} creada. Se generó automáticamente un item de pago.`,
+        description: esVentaAlPaso
+          ? `Venta al paso por $${newVenta.total} creada.`
+          : `Venta por $${newVenta.total} creada. Se generó automáticamente un item de pago.`,
       });
     },
     onError: (error: Error) => {
