@@ -29,6 +29,9 @@ export default function DashboardView() {
     let total = 0;
 
     itemsPago.forEach((item) => {
+      // Solo calcular saldo si el item tiene cliente asociado (no ventas al paso)
+      if (!item.clienteId) return;
+
       const saldo = item.monto - item.montoPagado;
       if (saldo > 0) {
         saldos.set(item.clienteId, (saldos.get(item.clienteId) || 0) + saldo);
