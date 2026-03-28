@@ -7,7 +7,7 @@ interface ProductoDB {
   nombre: string;
   categoria: CategoriaProducto;
   sku: string | null;
-  precio_costo: number;
+  precio_costo: number | null; // Puede ser null (opcional)
   precio_venta: number;
   cantidad_existente: number;
   cantidad_ideal: number;
@@ -22,7 +22,7 @@ const dbToProducto = (db: ProductoDB): Producto => ({
   nombre: db.nombre,
   categoria: db.categoria,
   sku: db.sku || undefined,
-  precioCosto: db.precio_costo,
+  precioCosto: db.precio_costo ?? undefined, // Convertir null a undefined
   precioVenta: db.precio_venta,
   cantidadExistente: db.cantidad_existente,
   cantidadIdeal: db.cantidad_ideal,
@@ -36,7 +36,7 @@ const productoToDb = (producto: ProductoFormData) => ({
   nombre: producto.nombre,
   categoria: producto.categoria,
   sku: producto.sku || null,
-  precio_costo: producto.precioCosto,
+  precio_costo: producto.precioCosto ?? null, // Convertir undefined a null
   precio_venta: producto.precioVenta,
   cantidad_existente: producto.cantidadExistente,
   cantidad_ideal: producto.cantidadIdeal,

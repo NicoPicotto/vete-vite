@@ -207,7 +207,8 @@ export const productoSchema = z.object({
   precioCosto: z
     .number()
     .min(0, 'El precio de costo no puede ser negativo')
-    .max(999999999, 'El precio es excesivo'),
+    .max(999999999, 'El precio es excesivo')
+    .optional(), // Precio de costo opcional
   precioVenta: z
     .number()
     .positive('El precio de venta debe ser positivo')

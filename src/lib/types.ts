@@ -175,7 +175,7 @@ export interface Producto {
   nombre: string;
   categoria: CategoriaProducto;
   sku?: string;
-  precioCosto: number;
+  precioCosto?: number; // Opcional - a veces no se tiene o cambia
   precioVenta: number;
   cantidadExistente: number;
   cantidadIdeal: number;

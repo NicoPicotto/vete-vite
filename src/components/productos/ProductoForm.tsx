@@ -62,7 +62,7 @@ export function ProductoForm({
           nombre: '',
           categoria: 'PetShop',
           sku: '',
-          precioCosto: 0,
+          precioCosto: undefined,
           precioVenta: 0,
           cantidadExistente: 0,
           cantidadIdeal: 0,
@@ -90,7 +90,7 @@ export function ProductoForm({
         nombre: '',
         categoria: 'PetShop',
         sku: '',
-        precioCosto: 0,
+        precioCosto: undefined,
         precioVenta: 0,
         cantidadExistente: 0,
         cantidadIdeal: 0,
@@ -146,6 +146,7 @@ export function ProductoForm({
               <Label htmlFor="categoria">Categoría *</Label>
               <Select
                 value={categoria}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onValueChange={(value) => setValue('categoria', value as any)}
               >
                 <SelectTrigger>
@@ -178,7 +179,7 @@ export function ProductoForm({
           {/* Precios */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="precioCosto">Precio de Costo * ($)</Label>
+              <Label htmlFor="precioCosto">Precio de Costo (opcional) ($)</Label>
               <Input
                 id="precioCosto"
                 type="number"
