@@ -149,7 +149,7 @@ export function ProductoForm({
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onValueChange={(value) => setValue('categoria', value as any)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecciona categoría" />
                 </SelectTrigger>
                 <SelectContent>
