@@ -195,6 +195,7 @@ export function RecordatorioForm({
                   key={atajo.label}
                   type="button"
                   variant="outline"
+                  className="bg-white"
                   size="sm"
                   onClick={() => handleAtajoFecha(atajo.meses)}
                 >
