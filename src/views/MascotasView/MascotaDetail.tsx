@@ -4,6 +4,8 @@ import { useMascota } from '@/hooks/useMascotas';
 import { useCliente } from '@/hooks/useClientes';
 import { useHistoriasClinicasByMascota, useCreateHistoriaClinica, useUpdateHistoriaClinica, useDeleteHistoriaClinica } from '@/hooks/useHistoriaClinica';
 import { useCreateRecordatorio } from '@/hooks/useRecordatorios';
+import { useVacunacionesByMascota, useCreateVacunacion, useDeleteVacunacion } from '@/hooks/useVacunaciones';
+import { useDesparasitacionesByMascota, useCreateDesparasitacion, useDeleteDesparasitacion } from '@/hooks/useDesparasitaciones';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,11 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Plus, Calendar, User, Activity, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Plus, Calendar, User, Activity, Edit, Trash2, Loader2, Syringe, Bug } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { HistoriaClinicaForm, type RecordatorioData } from '@/components/historia/HistoriaClinicaForm';
-import type { HistoriaClinicaFormValues } from '@/lib/schemas';
+import { VacunacionForm } from '@/components/vacunas/VacunacionForm';
+import { DesparasitacionForm } from '@/components/vacunas/DesparasitacionForm';
+import type { HistoriaClinicaFormValues, VacunacionFormValues, DesparasitacionFormValues } from '@/lib/schemas';
 import type { HistoriaClinica } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -32,14 +37,29 @@ export default function MascotaDetail() {
   const { data: mascota, isLoading: isLoadingMascota, error: errorMascota } = useMascota(id!);
   const { data: cliente } = useCliente(mascota?.clienteId || '');
   const { data: historiaClinica = [], isLoading: isLoadingHistoria } = useHistoriasClinicasByMascota(id!);
+  const { data: vacunaciones = [], isLoading: isLoadingVacunas } = useVacunacionesByMascota(id!);
+  const { data: desparasitaciones = [], isLoading: isLoadingDesparasitaciones } = useDesparasitacionesByMascota(id!);
+
   const createHistoriaMutation = useCreateHistoriaClinica();
   const updateHistoriaMutation = useUpdateHistoriaClinica();
   const deleteHistoriaMutation = useDeleteHistoriaClinica();
   const createRecordatorioMutation = useCreateRecordatorio();
+  const createVacunacionMutation = useCreateVacunacion();
+  const deleteVacunacionMutation = useDeleteVacunacion();
+  const createDesparasitacionMutation = useCreateDesparasitacion();
+  const deleteDesparasitacionMutation = useDeleteDesparasitacion();
 
   const [isConsultaFormOpen, setIsConsultaFormOpen] = useState(false);
   const [editingConsulta, setEditingConsulta] = useState<HistoriaClinica | undefined>();
   const [deletingConsultaId, setDeletingConsultaId] = useState<string | null>(null);
+
+  // Estados para vacunas
+  const [isVacunaFormOpen, setIsVacunaFormOpen] = useState(false);
+  const [deletingVacunaId, setDeletingVacunaId] = useState<string | null>(null);
+
+  // Estados para desparasitaciones
+  const [isDesparasitacionFormOpen, setIsDesparasitacionFormOpen] = useState(false);
+  const [deletingDesparasitacionId, setDeletingDesparasitacionId] = useState<string | null>(null);
 
   const handleCreateConsulta = (data: HistoriaClinicaFormValues, recordatorioData?: RecordatorioData) => {
     if (editingConsulta) {
@@ -99,6 +119,50 @@ export default function MascotaDetail() {
     setIsConsultaFormOpen(open);
     if (!open) {
       setEditingConsulta(undefined);
+    }
+  };
+
+  // Handlers para vacunas
+  const handleCreateVacunacion = (data: VacunacionFormValues) => {
+    createVacunacionMutation.mutate(
+      { mascotaId: id!, ...data },
+      {
+        onSuccess: () => {
+          setIsVacunaFormOpen(false);
+        },
+      }
+    );
+  };
+
+  const handleDeleteVacunacion = () => {
+    if (deletingVacunaId) {
+      deleteVacunacionMutation.mutate(deletingVacunaId, {
+        onSuccess: () => {
+          setDeletingVacunaId(null);
+        },
+      });
+    }
+  };
+
+  // Handlers para desparasitaciones
+  const handleCreateDesparasitacion = (data: DesparasitacionFormValues) => {
+    createDesparasitacionMutation.mutate(
+      { mascotaId: id!, ...data },
+      {
+        onSuccess: () => {
+          setIsDesparasitacionFormOpen(false);
+        },
+      }
+    );
+  };
+
+  const handleDeleteDesparasitacion = () => {
+    if (deletingDesparasitacionId) {
+      deleteDesparasitacionMutation.mutate(deletingDesparasitacionId, {
+        onSuccess: () => {
+          setDeletingDesparasitacionId(null);
+        },
+      });
     }
   };
 
@@ -301,16 +365,6 @@ export default function MascotaDetail() {
                       <p>{consulta.motivoConsulta}</p>
                     </div>
 
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Diagnóstico</p>
-                      <p>{consulta.diagnostico}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Tratamiento</p>
-                      <p>{consulta.tratamiento}</p>
-                    </div>
-
                     <div className="grid grid-cols-2 gap-4 pt-2">
                       {consulta.peso && (
                         <div>
@@ -351,6 +405,141 @@ export default function MascotaDetail() {
         </CardContent>
       </Card>
 
+      {/* Sección de Vacunas y Desparasitaciones con Tabs */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Calendario de Vacunas y Desparasitaciones</CardTitle>
+          <CardDescription>Registro histórico de vacunas y desparasitaciones aplicadas</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="vacunas" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="vacunas">
+                <Syringe className="h-4 w-4 mr-2" />
+                Vacunas
+              </TabsTrigger>
+              <TabsTrigger value="desparasitaciones">
+                <Bug className="h-4 w-4 mr-2" />
+                Desparasitaciones
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tab de Vacunas */}
+            <TabsContent value="vacunas" className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => setIsVacunaFormOpen(true)} size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Registrar Vacuna
+                </Button>
+              </div>
+
+              {isLoadingVacunas ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : vacunaciones.length === 0 ? (
+                <div className="text-center py-8">
+                  <Syringe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No hay vacunas registradas</p>
+                </div>
+              ) : (
+                <div className="border rounded-lg">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-medium text-sm">Fecha</th>
+                        <th className="text-left p-3 font-medium text-sm">Tipo de Vacuna</th>
+                        <th className="text-left p-3 font-medium text-sm">Notas</th>
+                        <th className="text-right p-3 font-medium text-sm">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vacunaciones.map((vacuna) => (
+                        <tr key={vacuna.id} className="border-t hover:bg-muted/30">
+                          <td className="p-3 text-sm">
+                            {format(vacuna.fecha, 'dd/MM/yyyy', { locale: es })}
+                          </td>
+                          <td className="p-3 font-medium text-sm">{vacuna.tipoVacuna}</td>
+                          <td className="p-3 text-sm text-muted-foreground">
+                            {vacuna.notas || '-'}
+                          </td>
+                          <td className="p-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeletingVacunaId(vacuna.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Tab de Desparasitaciones */}
+            <TabsContent value="desparasitaciones" className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => setIsDesparasitacionFormOpen(true)} size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Registrar Desparasitación
+                </Button>
+              </div>
+
+              {isLoadingDesparasitaciones ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : desparasitaciones.length === 0 ? (
+                <div className="text-center py-8">
+                  <Bug className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No hay desparasitaciones registradas</p>
+                </div>
+              ) : (
+                <div className="border rounded-lg">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-medium text-sm">Fecha</th>
+                        <th className="text-left p-3 font-medium text-sm">Tipo</th>
+                        <th className="text-left p-3 font-medium text-sm">Notas</th>
+                        <th className="text-right p-3 font-medium text-sm">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {desparasitaciones.map((desparasitacion) => (
+                        <tr key={desparasitacion.id} className="border-t hover:bg-muted/30">
+                          <td className="p-3 text-sm">
+                            {format(desparasitacion.fecha, 'dd/MM/yyyy', { locale: es })}
+                          </td>
+                          <td className="p-3 font-medium text-sm">{desparasitacion.tipoDesparasitacion}</td>
+                          <td className="p-3 text-sm text-muted-foreground">
+                            {desparasitacion.notas || '-'}
+                          </td>
+                          <td className="p-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeletingDesparasitacionId(desparasitacion.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Formularios */}
       <HistoriaClinicaForm
         open={isConsultaFormOpen}
         onOpenChange={handleCloseForm}
@@ -358,6 +547,19 @@ export default function MascotaDetail() {
         editData={editingConsulta}
       />
 
+      <VacunacionForm
+        open={isVacunaFormOpen}
+        onOpenChange={setIsVacunaFormOpen}
+        onSubmit={handleCreateVacunacion}
+      />
+
+      <DesparasitacionForm
+        open={isDesparasitacionFormOpen}
+        onOpenChange={setIsDesparasitacionFormOpen}
+        onSubmit={handleCreateDesparasitacion}
+      />
+
+      {/* AlertDialogs */}
       <AlertDialog open={!!deletingConsultaId} onOpenChange={(open) => !open && setDeletingConsultaId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -369,6 +571,40 @@ export default function MascotaDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConsulta} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingVacunaId} onOpenChange={(open) => !open && setDeletingVacunaId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar vacunación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el registro de esta vacunación.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteVacunacion} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingDesparasitacionId} onOpenChange={(open) => !open && setDeletingDesparasitacionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar desparasitación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el registro de esta desparasitación.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDesparasitacion} className="bg-destructive hover:bg-destructive/90">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -43,6 +43,29 @@ export interface Mascota {
 export type MascotaFormData = Omit<Mascota, 'id'>;
 
 // ============================================
+// VACUNACIONES Y DESPARASITACIONES
+// ============================================
+export interface Vacunacion {
+  id: string;
+  mascotaId: string;
+  fecha: Date;
+  tipoVacuna: string; // Campo de texto libre (ej: "Antirrábica", "Séxtuple")
+  notas?: string; // Opcional: lote, laboratorio, próxima dosis
+}
+
+export type VacunacionFormData = Omit<Vacunacion, 'id'>;
+
+export interface Desparasitacion {
+  id: string;
+  mascotaId: string;
+  fecha: Date;
+  tipoDesparasitacion: string; // Campo de texto libre (ej: "Interna", "Externa", "Pipeta Nexgard")
+  notas?: string; // Opcional: lote, laboratorio, próxima dosis
+}
+
+export type DesparasitacionFormData = Omit<Desparasitacion, 'id'>;
+
+// ============================================
 // HISTORIA CLÍNICA
 // ============================================
 export interface ArchivoAdjunto {
@@ -58,8 +81,6 @@ export interface HistoriaClinica {
   mascotaId: string;
   fecha: Date;
   motivoConsulta: string;
-  diagnostico: string;
-  tratamiento: string;
   peso?: number; // en kg
   temperatura?: number; // en °C
   vacunasAplicadas?: string[];

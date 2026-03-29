@@ -90,8 +90,6 @@ export function HistoriaClinicaForm({
         reset({
           fecha: fechaUTC,
           motivoConsulta: editData.motivoConsulta,
-          diagnostico: editData.diagnostico,
-          tratamiento: editData.tratamiento,
           peso: editData.peso,
           temperatura: editData.temperatura,
           veterinario: editData.veterinario,
@@ -106,8 +104,6 @@ export function HistoriaClinicaForm({
         reset({
           fecha: hoy,
           motivoConsulta: '',
-          diagnostico: '',
-          tratamiento: '',
           peso: undefined,
           temperatura: undefined,
           veterinario: '',
@@ -225,36 +221,6 @@ export function HistoriaClinicaForm({
             />
             {errors.motivoConsulta && (
               <p className="text-sm text-destructive">{errors.motivoConsulta.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="diagnostico">
-              Diagnóstico <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="diagnostico"
-              {...register('diagnostico')}
-              placeholder="Ej: Estado general excelente, leve sobrepeso, infección..."
-              rows={3}
-            />
-            {errors.diagnostico && (
-              <p className="text-sm text-destructive">{errors.diagnostico.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tratamiento">
-              Tratamiento <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="tratamiento"
-              {...register('tratamiento')}
-              placeholder="Ej: Vacuna antirrábica, medicación, dieta especial..."
-              rows={3}
-            />
-            {errors.tratamiento && (
-              <p className="text-sm text-destructive">{errors.tratamiento.message}</p>
             )}
           </div>
 
