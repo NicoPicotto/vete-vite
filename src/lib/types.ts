@@ -43,14 +43,36 @@ export interface Mascota {
 export type MascotaFormData = Omit<Mascota, 'id'>;
 
 // ============================================
+// VACUNACIONES Y DESPARASITACIONES
+// ============================================
+export interface Vacunacion {
+  id: string;
+  mascotaId: string;
+  fecha: Date;
+  tipoVacuna: string; // Campo de texto libre (ej: "Antirrábica", "Séxtuple")
+  notas?: string; // Opcional: lote, laboratorio, próxima dosis
+}
+
+export type VacunacionFormData = Omit<Vacunacion, 'id'>;
+
+export interface Desparasitacion {
+  id: string;
+  mascotaId: string;
+  fecha: Date;
+  tipoDesparasitacion: string; // Campo de texto libre (ej: "Interna", "Externa", "Pipeta Nexgard")
+  notas?: string; // Opcional: lote, laboratorio, próxima dosis
+}
+
+export type DesparasitacionFormData = Omit<Desparasitacion, 'id'>;
+
+// ============================================
 // HISTORIA CLÍNICA
 // ============================================
 export interface ArchivoAdjunto {
-  id: string;
   nombre: string;
-  url: string; // URL o base64 del archivo
-  tipo: string; // image/png, application/pdf, etc.
-  fecha: Date;
+  url: string; // URL pública de Supabase Storage
+  tipo: string; // application/pdf, image/jpeg, image/png
+  tamano: number; // Tamaño en bytes
 }
 
 export interface HistoriaClinica {
@@ -58,12 +80,10 @@ export interface HistoriaClinica {
   mascotaId: string;
   fecha: Date;
   motivoConsulta: string;
-  diagnostico: string;
-  tratamiento: string;
   peso?: number; // en kg
   temperatura?: number; // en °C
   vacunasAplicadas?: string[];
-  archivosAdjuntos?: ArchivoAdjunto[];
+  archivoAdjunto?: ArchivoAdjunto; // 1 solo archivo (PDF o imagen)
   notas?: string;
   veterinario?: string; // Nombre del profesional (hardcoded por ahora)
   itemsPago?: string[]; // IDs de items de pago asociados

@@ -72,6 +72,44 @@ export const mascotaSchema = z.object({
 export type MascotaFormValues = z.infer<typeof mascotaSchema>;
 
 // ============================================
+// VACUNACION SCHEMA
+// ============================================
+
+export const vacunacionSchema = z.object({
+  fecha: z.date(),
+  tipoVacuna: z
+    .string()
+    .min(2, 'El tipo de vacuna debe tener al menos 2 caracteres')
+    .max(200, 'El tipo de vacuna no puede exceder 200 caracteres'),
+  notas: z
+    .string()
+    .max(500, 'Las notas no pueden exceder 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type VacunacionFormValues = z.infer<typeof vacunacionSchema>;
+
+// ============================================
+// DESPARASITACION SCHEMA
+// ============================================
+
+export const desparasitacionSchema = z.object({
+  fecha: z.date(),
+  tipoDesparasitacion: z
+    .string()
+    .min(2, 'El tipo de desparasitación debe tener al menos 2 caracteres')
+    .max(200, 'El tipo de desparasitación no puede exceder 200 caracteres'),
+  notas: z
+    .string()
+    .max(500, 'Las notas no pueden exceder 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type DesparasitacionFormValues = z.infer<typeof desparasitacionSchema>;
+
+// ============================================
 // HISTORIA CLINICA SCHEMA
 // ============================================
 
@@ -81,24 +119,18 @@ export const historiaClinicaSchema = z.object({
     .string()
     .min(3, 'El motivo debe tener al menos 3 caracteres')
     .max(500, 'El motivo no puede exceder 500 caracteres'),
-  diagnostico: z
-    .string()
-    .min(3, 'El diagnóstico debe tener al menos 3 caracteres')
-    .max(1000, 'El diagnóstico no puede exceder 1000 caracteres'),
-  tratamiento: z
-    .string()
-    .min(3, 'El tratamiento debe tener al menos 3 caracteres')
-    .max(1000, 'El tratamiento no puede exceder 1000 caracteres'),
   peso: z
     .number()
     .positive('El peso debe ser positivo')
     .max(1000, 'El peso parece excesivo')
-    .optional(),
+    .optional()
+    .or(z.nan().transform(() => undefined)), // Convierte NaN a undefined
   temperatura: z
     .number()
     .min(30, 'La temperatura parece muy baja')
     .max(45, 'La temperatura parece muy alta')
-    .optional(),
+    .optional()
+    .or(z.nan().transform(() => undefined)), // Convierte NaN a undefined
   vacunasAplicadas: z.array(z.string()).optional(),
   notas: z
     .string()
