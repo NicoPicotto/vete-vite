@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { Desparasitacion, DesparasitacionFormData } from '@/lib/types';
+import type { DesparasitacionFormData } from '@/lib/types';
 import {
   getDesparasitacionesByMascotaId,
   getDesparasitacionById,
@@ -103,7 +103,7 @@ export const useDeleteDesparasitacion = () => {
 
   return useMutation({
     mutationFn: (id: string) => deleteDesparasitacion(id),
-    onSuccess: (_, deletedId) => {
+    onSuccess: () => {
       // Invalidar todas las queries de desparasitaciones
       queryClient.invalidateQueries({
         queryKey: desparasitacionesKeys.all,

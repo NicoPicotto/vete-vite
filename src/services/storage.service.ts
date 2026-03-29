@@ -36,7 +36,7 @@ export const uploadArchivoHistoriaClinica = async (
   const path = `${historiaClinicaId}/${fileName}`;
 
   // Subir archivo a Supabase Storage
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('historia-clinica')
     .upload(path, file, {
       cacheControl: '3600',
@@ -65,7 +65,6 @@ export const uploadArchivoHistoriaClinica = async (
  * Se usa al eliminar una consulta o al reemplazar un archivo
  */
 export const deleteArchivoHistoriaClinica = async (
-  historiaClinicaId: string,
   archivoUrl: string
 ): Promise<void> => {
   try {
