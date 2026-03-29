@@ -20,8 +20,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Bell, Calendar, Clock, ChevronDown } from 'lucide-react';
-import type { HistoriaClinica } from '@/lib/types';
+import { Bell, Calendar, Clock, ChevronDown, Paperclip, X } from 'lucide-react';
+import type { HistoriaClinica, ArchivoAdjunto } from '@/lib/types';
 
 export interface RecordatorioData {
   titulo: string;
@@ -32,7 +32,7 @@ export interface RecordatorioData {
 interface HistoriaClinicaFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: HistoriaClinicaFormValues, recordatorioData?: RecordatorioData) => void;
+  onSubmit: (data: HistoriaClinicaFormValues, recordatorioData?: RecordatorioData, archivo?: File) => void;
   editData?: HistoriaClinica;
 }
 
@@ -72,6 +72,10 @@ export function HistoriaClinicaForm({
   // Estado local para la fecha de la consulta (en formato YYYY-MM-DD para el input)
   const [fechaConsulta, setFechaConsulta] = useState<string>('');
 
+  // Estado para el archivo adjunto
+  const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
+  const [archivoExistente, setArchivoExistente] = useState<ArchivoAdjunto | undefined>(undefined);
+
   // Cargar datos cuando se abre el formulario
   useEffect(() => {
     if (open) {
@@ -95,6 +99,10 @@ export function HistoriaClinicaForm({
           veterinario: editData.veterinario,
           notas: editData.notas,
         });
+
+        // Cargar archivo existente
+        setArchivoExistente(editData.archivoAdjunto);
+        setArchivoSeleccionado(null);
       } else {
         // Modo crear - valores por defecto limpios (fecha de hoy)
         const hoy = new Date();
@@ -115,6 +123,10 @@ export function HistoriaClinicaForm({
         const fechaInicial = new Date();
         fechaInicial.setMonth(fechaInicial.getMonth() + 3); // Default +3 meses
         setRecordatorioFecha(fechaInicial);
+
+        // Resetear archivo
+        setArchivoExistente(undefined);
+        setArchivoSeleccionado(null);
       }
       // Resetear estado de recordatorio
       setCrearRecordatorio(false);
@@ -159,9 +171,40 @@ export function HistoriaClinicaForm({
         }
       : undefined;
 
-    await onSubmit(data, recordatorioData);
+    // Pasar archivo si hay uno seleccionado
+    await onSubmit(data, recordatorioData, archivoSeleccionado || undefined);
     reset();
+    setArchivoSeleccionado(null);
+    setArchivoExistente(undefined);
     onOpenChange(false);
+  };
+
+  // Handler para eliminar archivo nuevo seleccionado
+  const handleRemoveArchivo = () => {
+    setArchivoSeleccionado(null);
+  };
+
+  // Handler para cambio de archivo
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamaño (5 MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('El archivo no puede superar 5 MB');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Validar tipo
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Solo se permiten archivos PDF o imágenes (JPG, PNG)');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    setArchivoSeleccionado(file);
   };
 
   const handleClose = (open: boolean) => {
@@ -276,6 +319,61 @@ export function HistoriaClinicaForm({
             />
             {errors.notas && (
               <p className="text-sm text-destructive">{errors.notas.message}</p>
+            )}
+          </div>
+
+          {/* Sección de Archivo Adjunto */}
+          <div className="space-y-2">
+            <Label htmlFor="archivo">
+              <Paperclip className="h-4 w-4 inline mr-2" />
+              Archivo Adjunto (Opcional)
+            </Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              PDF o imagen (JPG, PNG) - Máx 5MB
+            </p>
+
+            {/* Mostrar archivo existente (solo en modo editar) */}
+            {archivoExistente && !archivoSeleccionado && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm flex-1">{archivoExistente.nombre}</span>
+                <a
+                  href={archivoExistente.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
+                  Ver archivo
+                </a>
+              </div>
+            )}
+
+            {/* Mostrar archivo nuevo seleccionado */}
+            {archivoSeleccionado && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm flex-1">
+                  {archivoSeleccionado.name} ({(archivoSeleccionado.size / 1024).toFixed(0)} KB)
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveArchivo}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Input de archivo */}
+            {!archivoSeleccionado && (
+              <Input
+                id="archivo"
+                type="file"
+                accept=".pdf,image/jpeg,image/png,image/jpg"
+                onChange={handleFileChange}
+              />
             )}
           </div>
 

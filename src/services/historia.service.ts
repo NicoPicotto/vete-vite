@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { HistoriaClinica, HistoriaClinicaFormData } from '@/lib/types';
+import type { HistoriaClinica, HistoriaClinicaFormData, ArchivoAdjunto } from '@/lib/types';
 
 // Tipo para la tabla de Supabase (snake_case)
 interface HistoriaClinicaDB {
@@ -10,6 +10,7 @@ interface HistoriaClinicaDB {
   peso: number | null;
   temperatura: number | null;
   vacunas_aplicadas: string[] | null;
+  archivo_adjunto: ArchivoAdjunto | null; // JSONB
   notas: string | null;
   veterinario: string | null;
   created_at: string;
@@ -25,9 +26,10 @@ const dbToHistoriaClinica = (db: HistoriaClinicaDB): HistoriaClinica => ({
   peso: db.peso || undefined,
   temperatura: db.temperatura || undefined,
   vacunasAplicadas: db.vacunas_aplicadas || undefined,
+  archivoAdjunto: db.archivo_adjunto || undefined,
   notas: db.notas || undefined,
   veterinario: db.veterinario || undefined,
-  // archivosAdjuntos e itemsPago se manejarán en futuras iteraciones
+  // itemsPago se manejará en futuras iteraciones
 });
 
 // Convertir de TS (camelCase) a DB (snake_case)
@@ -38,6 +40,7 @@ const historiaClinicaToDb = (historia: HistoriaClinicaFormData & { fecha?: Date 
   peso: historia.peso || null,
   temperatura: historia.temperatura || null,
   vacunas_aplicadas: historia.vacunasAplicadas || null,
+  archivo_adjunto: historia.archivoAdjunto || null,
   notas: historia.notas || null,
   veterinario: historia.veterinario || null,
 });

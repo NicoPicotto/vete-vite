@@ -123,12 +123,14 @@ export const historiaClinicaSchema = z.object({
     .number()
     .positive('El peso debe ser positivo')
     .max(1000, 'El peso parece excesivo')
-    .optional(),
+    .optional()
+    .or(z.nan().transform(() => undefined)), // Convierte NaN a undefined
   temperatura: z
     .number()
     .min(30, 'La temperatura parece muy baja')
     .max(45, 'La temperatura parece muy alta')
-    .optional(),
+    .optional()
+    .or(z.nan().transform(() => undefined)), // Convierte NaN a undefined
   vacunasAplicadas: z.array(z.string()).optional(),
   notas: z
     .string()

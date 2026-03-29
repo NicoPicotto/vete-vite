@@ -6,6 +6,7 @@ import { useHistoriasClinicasByMascota, useCreateHistoriaClinica, useUpdateHisto
 import { useCreateRecordatorio } from '@/hooks/useRecordatorios';
 import { useVacunacionesByMascota, useCreateVacunacion, useDeleteVacunacion } from '@/hooks/useVacunaciones';
 import { useDesparasitacionesByMascota, useCreateDesparasitacion, useDeleteDesparasitacion } from '@/hooks/useDesparasitaciones';
+import { uploadArchivoHistoriaClinica, deleteAllArchivosHistoriaClinica } from '@/services/storage.service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,9 +62,13 @@ export default function MascotaDetail() {
   const [isDesparasitacionFormOpen, setIsDesparasitacionFormOpen] = useState(false);
   const [deletingDesparasitacionId, setDeletingDesparasitacionId] = useState<string | null>(null);
 
-  const handleCreateConsulta = (data: HistoriaClinicaFormValues, recordatorioData?: RecordatorioData) => {
+  const handleCreateConsulta = async (
+    data: HistoriaClinicaFormValues,
+    recordatorioData?: RecordatorioData,
+    archivo?: File
+  ) => {
     if (editingConsulta) {
-      // Editar consulta existente
+      // Editar consulta existente (sin manejo de archivo por ahora)
       updateHistoriaMutation.mutate(
         { id: editingConsulta.id, data: { mascotaId: id!, ...data } },
         {
@@ -75,28 +80,69 @@ export default function MascotaDetail() {
       );
     } else {
       // Crear nueva consulta
-      createHistoriaMutation.mutate(
-        { mascotaId: id!, ...data },
-        {
-          onSuccess: (nuevaConsulta) => {
-            setIsConsultaFormOpen(false);
+      try {
+        // 1. Subir archivo si existe
+        let archivoAdjunto;
+        if (archivo) {
+          toast.loading('Subiendo archivo...');
+          // Primero creamos la consulta para tener el ID
+          const consultaData = { mascotaId: id!, ...data };
+          const nuevaConsulta = await createHistoriaMutation.mutateAsync(consultaData);
 
-            // Crear recordatorio si se proporcionó
-            if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
-              createRecordatorioMutation.mutate({
-                historiaClinicaId: nuevaConsulta.id,
-                mascotaId: id!,
-                clienteId: mascota.clienteId,
-                titulo: recordatorioData.titulo,
-                descripcion: recordatorioData.descripcion,
-                fechaRecordatorio: recordatorioData.fechaRecordatorio,
-              });
-            } else {
-              toast.success('Consulta creada exitosamente');
+          // Luego subimos el archivo con el ID de la consulta
+          archivoAdjunto = await uploadArchivoHistoriaClinica(nuevaConsulta.id, archivo);
+
+          // Actualizar la consulta con el archivo
+          await updateHistoriaMutation.mutateAsync({
+            id: nuevaConsulta.id,
+            data: { mascotaId: id!, ...data, archivoAdjunto },
+          });
+
+          toast.dismiss();
+          setIsConsultaFormOpen(false);
+
+          // Crear recordatorio si se proporcionó
+          if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
+            createRecordatorioMutation.mutate({
+              historiaClinicaId: nuevaConsulta.id,
+              mascotaId: id!,
+              clienteId: mascota.clienteId,
+              titulo: recordatorioData.titulo,
+              descripcion: recordatorioData.descripcion,
+              fechaRecordatorio: recordatorioData.fechaRecordatorio,
+            });
+          } else {
+            toast.success('Consulta y archivo guardados exitosamente');
+          }
+        } else {
+          // Sin archivo, flujo normal
+          createHistoriaMutation.mutate(
+            { mascotaId: id!, ...data },
+            {
+              onSuccess: (nuevaConsulta) => {
+                setIsConsultaFormOpen(false);
+
+                // Crear recordatorio si se proporcionó
+                if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
+                  createRecordatorioMutation.mutate({
+                    historiaClinicaId: nuevaConsulta.id,
+                    mascotaId: id!,
+                    clienteId: mascota.clienteId,
+                    titulo: recordatorioData.titulo,
+                    descripcion: recordatorioData.descripcion,
+                    fechaRecordatorio: recordatorioData.fechaRecordatorio,
+                  });
+                } else {
+                  toast.success('Consulta creada exitosamente');
+                }
+              },
             }
-          },
+          );
         }
-      );
+      } catch (error) {
+        toast.dismiss();
+        toast.error('Error al crear consulta: ' + (error as Error).message);
+      }
     }
   };
 
@@ -105,8 +151,17 @@ export default function MascotaDetail() {
     setIsConsultaFormOpen(true);
   };
 
-  const handleDeleteConsulta = () => {
+  const handleDeleteConsulta = async () => {
     if (deletingConsultaId) {
+      // Eliminar archivos adjuntos antes de eliminar la consulta
+      try {
+        await deleteAllArchivosHistoriaClinica(deletingConsultaId);
+      } catch (error) {
+        console.error('Error al eliminar archivos:', error);
+        // Continuar con la eliminación de la consulta aunque falle la eliminación de archivos
+      }
+
+      // Eliminar la consulta
       deleteHistoriaMutation.mutate(deletingConsultaId, {
         onSuccess: () => {
           setDeletingConsultaId(null);
@@ -395,6 +450,26 @@ export default function MascotaDetail() {
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Notas</p>
                         <p className="text-sm">{consulta.notas}</p>
+                      </div>
+                    )}
+
+                    {consulta.archivoAdjunto && (
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                        >
+                          <a
+                            href={consulta.archivoAdjunto.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2"
+                          >
+                            <Calendar className="h-4 w-4" />
+                            Ver {consulta.archivoAdjunto.tipo === 'application/pdf' ? 'PDF' : 'Imagen'}
+                          </a>
+                        </Button>
                       </div>
                     )}
                   </div>
