@@ -15,11 +15,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RecordatorioSection, type RecordatorioData } from '@/components/recordatorios/RecordatorioSection';
 
 interface DesparasitacionFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: DesparasitacionFormValues) => void;
+  onSubmit: (data: DesparasitacionFormValues, recordatorioData?: RecordatorioData) => void;
   editData?: Desparasitacion;
 }
 
@@ -41,6 +42,9 @@ export function DesparasitacionForm({
 
   // Estado local para la fecha (en formato YYYY-MM-DD para el input)
   const [fechaDesparasitacion, setFechaDesparasitacion] = useState<string>('');
+
+  // Estado para el recordatorio
+  const [recordatorioData, setRecordatorioData] = useState<RecordatorioData | undefined>(undefined);
 
   // Cargar datos cuando se abre el formulario
   useEffect(() => {
@@ -75,8 +79,9 @@ export function DesparasitacionForm({
   }, [editData, open, reset]);
 
   const handleFormSubmit = async (data: DesparasitacionFormValues) => {
-    await onSubmit(data);
+    await onSubmit(data, recordatorioData);
     reset();
+    setRecordatorioData(undefined); // Reset recordatorio
     onOpenChange(false);
   };
 
@@ -153,6 +158,15 @@ export function DesparasitacionForm({
               <p className="text-sm text-destructive">{errors.notas.message}</p>
             )}
           </div>
+
+          {/* Sección de recordatorio - solo en modo crear */}
+          {!editData && (
+            <RecordatorioSection
+              checkboxLabel="Crear recordatorio para próxima desparasitación"
+              tituloPlaceholder="Ej: Aplicar próxima dosis de desparasitación"
+              onRecordatorioChange={setRecordatorioData}
+            />
+          )}
 
           <DialogFooter>
             <Button
