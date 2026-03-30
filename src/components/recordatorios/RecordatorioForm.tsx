@@ -63,29 +63,27 @@ export function RecordatorioForm({
   });
 
   const mascotaId = watch('mascotaId');
-  const fechaRecordatorio = watch('fechaRecordatorio');
 
-  // Estado local para mostrar la fecha seleccionada de forma legible
+  // Estado local para el input de fecha (en formato YYYY-MM-DD para el input HTML)
+  const [fechaInput, setFechaInput] = useState<string>('');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
 
   useEffect(() => {
     if (open) {
+      // Inicializar con fecha de hoy
+      const hoy = new Date();
+      const fechaISOHoy = hoy.toISOString().split('T')[0];
+      setFechaInput(fechaISOHoy);
+
       reset({
         mascotaId: '',
         titulo: '',
         descripcion: '',
-        fechaRecordatorio: new Date(),
+        fechaRecordatorio: hoy,
       });
-      setFechaSeleccionada('');
-    }
-  }, [open, reset]);
 
-  // Actualizar la visualización de la fecha cuando cambia
-  useEffect(() => {
-    if (fechaRecordatorio) {
-      const fecha = new Date(fechaRecordatorio);
       setFechaSeleccionada(
-        fecha.toLocaleDateString('es-AR', {
+        hoy.toLocaleDateString('es-AR', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -93,12 +91,31 @@ export function RecordatorioForm({
         })
       );
     }
-  }, [fechaRecordatorio]);
+  }, [open, reset]);
 
   const handleAtajoFecha = (meses: number) => {
     const nuevaFecha = new Date();
     nuevaFecha.setMonth(nuevaFecha.getMonth() + meses);
-    setValue('fechaRecordatorio', nuevaFecha, { shouldValidate: true });
+
+    // Actualizar el input HTML (formato YYYY-MM-DD)
+    const fechaISO = nuevaFecha.toISOString().split('T')[0];
+    setFechaInput(fechaISO);
+
+    // Actualizar React Hook Form con Date UTC (mediodía para evitar problemas de timezone)
+    const [year, month, day] = fechaISO.split('-').map(Number);
+    const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    setValue('fechaRecordatorio', fechaUTC, { shouldValidate: true });
+
+    // Actualizar visualización legible usando fecha local parseada
+    const fechaLocal = new Date(year, month - 1, day);
+    setFechaSeleccionada(
+      fechaLocal.toLocaleDateString('es-AR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    );
   };
 
   const handleFormSubmit = async (data: RecordatorioFormValues) => {
@@ -214,9 +231,29 @@ export function RecordatorioForm({
             <Input
               id="fechaRecordatorio"
               type="date"
-              {...register('fechaRecordatorio', {
-                valueAsDate: true,
-              })}
+              value={fechaInput}
+              onChange={(e) => {
+                const fechaStr = e.target.value;
+                setFechaInput(fechaStr);
+
+                if (fechaStr) {
+                  // Convertir a Date UTC (mediodía para evitar problemas de timezone)
+                  const [year, month, day] = fechaStr.split('-').map(Number);
+                  const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+                  setValue('fechaRecordatorio', fechaUTC, { shouldValidate: true });
+
+                  // Actualizar visualización legible usando la fecha local parseada
+                  const fechaLocal = new Date(year, month - 1, day);
+                  setFechaSeleccionada(
+                    fechaLocal.toLocaleDateString('es-AR', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  );
+                }
+              }}
             />
             {errors.fechaRecordatorio && (
               <p className="text-sm text-destructive">{errors.fechaRecordatorio.message}</p>

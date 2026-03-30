@@ -178,12 +178,23 @@ export default function MascotaDetail() {
   };
 
   // Handlers para vacunas
-  const handleCreateVacunacion = (data: VacunacionFormValues) => {
+  const handleCreateVacunacion = (data: VacunacionFormValues, recordatorioData?: RecordatorioData) => {
     createVacunacionMutation.mutate(
       { mascotaId: id!, ...data },
       {
         onSuccess: () => {
           setIsVacunaFormOpen(false);
+
+          // Crear recordatorio si fue solicitado
+          if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
+            createRecordatorioMutation.mutate({
+              mascotaId: id!,
+              clienteId: mascota.clienteId,
+              titulo: recordatorioData.titulo,
+              descripcion: recordatorioData.descripcion,
+              fechaRecordatorio: recordatorioData.fechaRecordatorio,
+            });
+          }
         },
       }
     );
@@ -200,12 +211,23 @@ export default function MascotaDetail() {
   };
 
   // Handlers para desparasitaciones
-  const handleCreateDesparasitacion = (data: DesparasitacionFormValues) => {
+  const handleCreateDesparasitacion = (data: DesparasitacionFormValues, recordatorioData?: RecordatorioData) => {
     createDesparasitacionMutation.mutate(
       { mascotaId: id!, ...data },
       {
         onSuccess: () => {
           setIsDesparasitacionFormOpen(false);
+
+          // Crear recordatorio si fue solicitado
+          if (recordatorioData && mascota && recordatorioData.titulo.trim()) {
+            createRecordatorioMutation.mutate({
+              mascotaId: id!,
+              clienteId: mascota.clienteId,
+              titulo: recordatorioData.titulo,
+              descripcion: recordatorioData.descripcion,
+              fechaRecordatorio: recordatorioData.fechaRecordatorio,
+            });
+          }
         },
       }
     );
