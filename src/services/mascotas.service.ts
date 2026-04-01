@@ -9,7 +9,6 @@ interface MascotaDB {
   especie: string;
   raza: string;
   fecha_nacimiento: string | null;
-  edad: string | null;
   sexo: string;
   estado: string;
   otras_caracteristicas: string | null;
@@ -25,7 +24,6 @@ const dbToMascota = (db: MascotaDB): Mascota => ({
   especie: db.especie as Mascota['especie'],
   raza: db.raza,
   fechaNacimiento: db.fecha_nacimiento ? new Date(db.fecha_nacimiento) : undefined,
-  edad: db.edad || undefined,
   sexo: db.sexo as Mascota['sexo'],
   estado: db.estado as Mascota['estado'],
   otrasCaracteristicas: db.otras_caracteristicas || undefined,
@@ -38,7 +36,6 @@ const mascotaToDb = (mascota: MascotaFormData) => ({
   especie: mascota.especie,
   raza: mascota.raza,
   fecha_nacimiento: mascota.fechaNacimiento?.toISOString().split('T')[0] || null,
-  edad: mascota.edad || null,
   sexo: mascota.sexo,
   estado: mascota.estado,
   otras_caracteristicas: mascota.otrasCaracteristicas || null,

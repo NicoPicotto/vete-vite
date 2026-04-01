@@ -85,6 +85,7 @@ import type {
 import type { ItemPago, Recordatorio } from "@/lib/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { calcularEdad } from "@/lib/utils";
 
 export default function ClienteDetail() {
    const { id } = useParams<{ id: string }>();
@@ -522,7 +523,7 @@ export default function ClienteDetail() {
                               </TableCell>
                               <TableCell>{mascota.especie}</TableCell>
                               <TableCell>{mascota.raza}</TableCell>
-                              <TableCell>{mascota.edad || "-"}</TableCell>
+                              <TableCell>{mascota.fechaNacimiento ? calcularEdad(mascota.fechaNacimiento) : "-"}</TableCell>
                               <TableCell>
                                  <Badge
                                     variant={
