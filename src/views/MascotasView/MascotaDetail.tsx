@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Plus, Calendar, User, Activity, Edit, Trash2, Loader2, Syringe, Bug } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { calcularEdad } from '@/lib/utils';
 import { HistoriaClinicaForm, type RecordatorioData } from '@/components/historia/HistoriaClinicaForm';
 import { VacunacionForm } from '@/components/vacunas/VacunacionForm';
 import { DesparasitacionForm } from '@/components/vacunas/DesparasitacionForm';
@@ -339,8 +340,12 @@ export default function MascotaDetail() {
               <p className="font-medium">{mascota.sexo}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Edad</p>
-              <p className="font-medium">{mascota.edad || 'No especificada'}</p>
+              <p className="text-sm text-muted-foreground">Fecha de Nacimiento</p>
+              <p className="font-medium">
+                {mascota.fechaNacimiento
+                  ? `${format(mascota.fechaNacimiento, 'dd/MM/yyyy')} (${calcularEdad(mascota.fechaNacimiento)})`
+                  : 'No especificada'}
+              </p>
             </div>
             {mascota.otrasCaracteristicas && (
               <div className="col-span-2">

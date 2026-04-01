@@ -55,11 +55,6 @@ export const mascotaSchema = z.object({
     .min(2, 'La raza debe tener al menos 2 caracteres')
     .max(50, 'La raza no puede exceder 50 caracteres'),
   fechaNacimiento: z.date().optional(),
-  edad: z
-    .string()
-    .max(20, 'La edad no puede exceder 20 caracteres')
-    .optional()
-    .or(z.literal('')),
   sexo: z.enum(['Macho', 'Hembra']),
   estado: z.enum(['Activo', 'Fallecido']),
   otrasCaracteristicas: z

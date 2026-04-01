@@ -34,7 +34,6 @@ export interface Mascota {
   especie: Especie;
   raza: string;
   fechaNacimiento?: Date;
-  edad?: string; // Puede ser calculada o ingresada manualmente
   sexo: Sexo;
   estado: EstadoMascota;
   otrasCaracteristicas?: string; // Campo libre para notas adicionales

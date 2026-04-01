@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Eye, User, Loader2 } from 'lucide-react';
 import { useMascotas } from '@/hooks/useMascotas';
 import { useClientes } from '@/hooks/useClientes';
+import { calcularEdad } from '@/lib/utils';
 
 export default function MascotasView() {
   const { data: mascotas = [], isLoading: isLoadingMascotas, error: errorMascotas } = useMascotas();
@@ -83,7 +84,7 @@ export default function MascotasView() {
                     <TableCell>{mascota.especie}</TableCell>
                     <TableCell>{mascota.raza}</TableCell>
                     <TableCell>{mascota.sexo}</TableCell>
-                    <TableCell>{mascota.edad || '-'}</TableCell>
+                    <TableCell>{mascota.fechaNacimiento ? calcularEdad(mascota.fechaNacimiento) : '-'}</TableCell>
                     <TableCell>
                       {cliente && (
                         <Button variant="link" size="sm" asChild className="p-0 h-auto">
