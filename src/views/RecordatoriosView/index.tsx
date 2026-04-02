@@ -4,7 +4,6 @@ import { useMascotas } from '@/hooks/useMascotas';
 import {
   useRecordatorios,
   useCompletarRecordatorio,
-  useCancelarRecordatorio,
   useReprogramarRecordatorio,
   useDeleteRecordatorio,
 } from '@/hooks/useRecordatorios';
@@ -30,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Calendar as CalendarIcon, CheckCircle, XCircle, Trash2, Bell, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle, Trash2, Bell, Loader2 } from 'lucide-react';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ReprogramarDialog } from '@/components/recordatorios/ReprogramarDialog';
@@ -44,7 +43,6 @@ export default function RecordatoriosView() {
 
   // Hooks de mutations
   const completarRecordatorioMutation = useCompletarRecordatorio();
-  const cancelarRecordatorioMutation = useCancelarRecordatorio();
   const reprogramarRecordatorioMutation = useReprogramarRecordatorio();
   const deleteRecordatorioMutation = useDeleteRecordatorio();
 
@@ -97,11 +95,7 @@ export default function RecordatoriosView() {
     completarRecordatorioMutation.mutate(id);
   };
 
-  const handleCancelar = (id: string) => {
-    cancelarRecordatorioMutation.mutate(id);
-  };
-
-  const handleDeleteRecordatorio = () => {
+const handleDeleteRecordatorio = () => {
     if (deletingRecordatorioId) {
       deleteRecordatorioMutation.mutate(deletingRecordatorioId);
       setDeletingRecordatorioId(null);
@@ -131,9 +125,8 @@ export default function RecordatoriosView() {
     return mascota?.nombre || 'Desconocido';
   };
 
-  const getClienteNombre = (clienteId: string) => {
-    const cliente = clientes.find((c) => c.id === clienteId);
-    return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
+  const getCliente = (clienteId: string) => {
+    return clientes.find((c) => c.id === clienteId) ?? null;
   };
 
   const formatFechaRelativa = (fecha: Date) => {
@@ -200,13 +193,23 @@ export default function RecordatoriosView() {
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>{getClienteNombre(recordatorio.clienteId)}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const cliente = getCliente(recordatorio.clienteId);
+                    return cliente ? (
+                      <div className="flex flex-col">
+                        <span className="font-medium">{cliente.nombre} {cliente.apellido}</span>
+                        <span className="text-xs text-muted-foreground">{cliente.telefono}</span>
+                      </div>
+                    ) : 'Desconocido';
+                  })()}
+                </TableCell>
                 <TableCell>{getMascotaNombre(recordatorio.mascotaId)}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium">{recordatorio.titulo}</span>
                     {recordatorio.descripcion && (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {recordatorio.descripcion}
                       </span>
                     )}
@@ -237,15 +240,7 @@ export default function RecordatoriosView() {
                         >
                           <CalendarIcon className="h-4 w-4 text-blue-600" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleCancelar(recordatorio.id)}
-                          title="Cancelar"
-                        >
-                          <XCircle className="h-4 w-4 text-orange-600" />
-                        </Button>
-                      </>
+</>
                     )}
                     <Button
                       variant="ghost"

@@ -20,8 +20,13 @@ export default function DashboardView() {
       .sort(
         (a, b) =>
           new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime()
-      );
-  }, [recordatorios]);
+      )
+      .map((r) => {
+        const cliente = clientes.find((c) => c.id === r.clienteId);
+        const mascota = mascotas.find((m) => m.id === r.mascotaId);
+        return { ...r, cliente, mascota };
+      });
+  }, [recordatorios, clientes, mascotas]);
 
   // Calcular deuda total y saldo por cliente
   const { totalDeuda, saldosPorCliente } = useMemo(() => {
@@ -124,8 +129,18 @@ export default function DashboardView() {
                 {recordatoriosPendientes.slice(0, 5).map((recordatorio) => (
                   <div key={recordatorio.id} className="flex justify-between items-start border-b pb-2 last:border-0">
                     <div>
-                      <p className="font-medium text-sm">{recordatorio.titulo}</p>
+                      <p className="font-medium text-sm">
+                        {recordatorio.titulo}
+                        {recordatorio.mascota && (
+                          <span className="font-normal text-muted-foreground"> — {recordatorio.mascota.nombre}</span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">{recordatorio.descripcion}</p>
+                      {recordatorio.cliente && (
+                        <p className="text-xs text-muted-foreground">
+                          {recordatorio.cliente.nombre} {recordatorio.cliente.apellido} · {recordatorio.cliente.telefono}
+                        </p>
+                      )}
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {recordatorio.fechaRecordatorio.toLocaleDateString()}

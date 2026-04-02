@@ -19,7 +19,6 @@ import {
 import {
    useRecordatoriosByCliente,
    useCompletarRecordatorio,
-   useCancelarRecordatorio,
    useReprogramarRecordatorio,
    useDeleteRecordatorio,
 } from "@/hooks/useRecordatorios";
@@ -64,7 +63,6 @@ import {
    Bell,
    Calendar as CalendarIcon,
    CheckCircle,
-   XCircle,
    Loader2,
    ShoppingCart,
 } from "lucide-react";
@@ -117,7 +115,6 @@ export default function ClienteDetail() {
    const { data: recordatorios = [], isLoading: isLoadingRecordatorios } =
       useRecordatoriosByCliente(id!);
    const completarRecordatorioMutation = useCompletarRecordatorio();
-   const cancelarRecordatorioMutation = useCancelarRecordatorio();
    const reprogramarRecordatorioMutation = useReprogramarRecordatorio();
    const deleteRecordatorioMutation = useDeleteRecordatorio();
 
@@ -281,12 +278,6 @@ export default function ClienteDetail() {
 
    const handleCompletar = (recordatorioId: string) => {
       completarRecordatorioMutation.mutate(recordatorioId);
-   };
-
-   const handleCancelar = (recordatorioId: string) => {
-      if (confirm("¿Estás seguro de cancelar este recordatorio?")) {
-         cancelarRecordatorioMutation.mutate(recordatorioId);
-      }
    };
 
    const handleDeleteRecordatorio = (
@@ -860,19 +851,7 @@ export default function ClienteDetail() {
                                                    >
                                                       <CalendarIcon className='h-4 w-4' />
                                                    </Button>
-                                                   <Button
-                                                      variant='ghost'
-                                                      size='sm'
-                                                      onClick={() =>
-                                                         handleCancelar(
-                                                            recordatorio.id,
-                                                         )
-                                                      }
-                                                      title='Cancelar'
-                                                   >
-                                                      <XCircle className='h-4 w-4' />
-                                                   </Button>
-                                                </>
+</>
                                              )}
                                           <Button
                                              variant='ghost'
