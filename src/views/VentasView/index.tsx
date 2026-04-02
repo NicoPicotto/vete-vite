@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -5,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Eye, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Eye, Loader2, Search } from 'lucide-react';
 import { useVentas } from '@/hooks/useVentas';
 import { useClientes } from '@/hooks/useClientes';
 import type { EstadoPago } from '@/lib/types';
@@ -14,11 +16,32 @@ export default function VentasView() {
   const { data: ventas = [], isLoading, error } = useVentas();
   const { data: clientes = [] } = useClientes();
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchFecha, setSearchFecha] = useState('');
+
   const getClienteNombre = (clienteId?: string) => {
     if (!clienteId) return 'Venta al Paso';
     const cliente = clientes.find((c) => c.id === clienteId);
     return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente desconocido';
   };
+
+  const ventasFiltradas = useMemo(() => {
+    return ventas.filter((venta) => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        const cliente = clientes.find((c) => c.id === venta.clienteId);
+        const nombreCliente = cliente
+          ? `${cliente.nombre} ${cliente.apellido}`.toLowerCase()
+          : 'venta al paso';
+        if (!nombreCliente.includes(term)) return false;
+      }
+      if (searchFecha) {
+        const fechaVenta = format(new Date(venta.fecha), 'yyyy-MM-dd');
+        if (fechaVenta !== searchFecha) return false;
+      }
+      return true;
+    });
+  }, [ventas, clientes, searchTerm, searchFecha]);
 
   const getEstadoBadge = (estado: EstadoPago) => {
     switch (estado) {
@@ -75,8 +98,25 @@ export default function VentasView() {
           <CardDescription>
             {isLoading
               ? 'Cargando...'
-              : `${ventas.length} venta${ventas.length !== 1 ? 's' : ''} registrada${ventas.length !== 1 ? 's' : ''}`}
+              : `${ventasFiltradas.length} de ${ventas.length} venta${ventas.length !== 1 ? 's' : ''}`}
           </CardDescription>
+          <div className="flex gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Input
+              type="date"
+              value={searchFecha}
+              onChange={(e) => setSearchFecha(e.target.value)}
+              className="w-45"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -86,6 +126,10 @@ export default function VentasView() {
           ) : ventas.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               No hay ventas registradas. Crea la primera.
+            </div>
+          ) : ventasFiltradas.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No se encontraron ventas para los filtros aplicados.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -102,7 +146,7 @@ export default function VentasView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ventas.map((venta) => (
+                  {ventasFiltradas.map((venta) => (
                     <TableRow key={venta.id}>
                       <TableCell>
                         {format(new Date(venta.fecha), "d 'de' MMMM, yyyy", { locale: es })}
