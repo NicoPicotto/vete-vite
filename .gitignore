@@ -9,8 +9,9 @@ lerna-debug.log*
 CLAUDE.md
 FEATURE_VENTA_DESDE_CLIENTE.md
 MODULOS_VENTAS_PRODUCTOS.md
-supabase-schema-ventas-productos.sql
 supabase-schema.sql
+supabase-schema-ventas-productos.sql
+
 .env
 supabase-migrations
 

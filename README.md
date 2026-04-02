@@ -1,124 +1,66 @@
-# VeteVite - Sistema de Gestión Veterinaria
+# Clinica Para Mascotas — Sistema de Gestión Veterinaria
 
-Sistema de gestión integral para clínicas veterinarias desarrollado con React, Vite, TypeScript y shadcn/ui.
+Sistema de gestión integral para clínicas veterinarias. Permite administrar clientes, mascotas, historia clínica, turnos, recordatorios, pagos, stock y ventas desde una interfaz unificada.
 
-## Stack Tecnológico
+Desarrollado por **Nicolás Picoto**.
 
-- **React 19** + **Vite 7**
-- **TypeScript 5.9**
-- **shadcn/ui** (Radix UI + Tailwind CSS 4)
-- **React Router v6**
-- **React Hook Form + Zod** (validaciones)
-- **date-fns** (manejo de fechas)
-- **Sonner** (notificaciones)
+---
 
-## Inicio Rápido
+## Stack
 
-```bash
-# Instalar dependencias
-npm install
+| Capa | Tecnología |
+|---|---|
+| Framework | React 19 + Vite 7 |
+| Lenguaje | TypeScript 5.9 |
+| UI | shadcn/ui · Radix UI · Tailwind CSS 4 |
+| Backend | Supabase (PostgreSQL + Storage) |
+| Estado del servidor | TanStack Query v5 |
+| Formularios | React Hook Form + Zod |
+| Routing | React Router v6 |
+| Notificaciones | Sonner |
 
-# Iniciar servidor de desarrollo
-npm run dev
+---
 
-# Build para producción
-npm run build
+## Módulos
 
-# Preview del build
-npm run preview
-```
+- **Clientes** — CRUD con saldo pendiente calculado automáticamente
+- **Mascotas** — CRUD con historia clínica, vacunas y desparasitaciones por mascota
+- **Historia Clínica** — Consultas con archivos adjuntos (PDF/imagen) y recordatorios integrados
+- **Turnos** — Agenda con slots de 30 min, estados y generación de historia clínica desde el turno
+- **Recordatorios** — Seguimiento de pacientes con atajos de fecha y reprogramación
+- **Pagos** — Items de cobro con pagos parciales y saldo por cliente
+- **Ventas** — Carrito de productos con descuento de stock automático e integración con pagos
+- **Productos** — Inventario con stock ideal y alertas de reposición
+- **Dashboard** — Métricas del día: recordatorios próximos y turnos de hoy
 
-## Documentación del Proyecto
+---
 
-Ver [CLAUDE.md](./CLAUDE.md) para:
-- Scope completo del proyecto
-- Estructura de datos
-- Fases de desarrollo
-- Roadmap y features
-
-## Estructura del Proyecto
+## Estructura
 
 ```
 src/
-├── components/        # Componentes reutilizables
-│   ├── ui/           # shadcn components
-│   ├── clientes/     # Componentes de clientes
-│   ├── mascotas/     # Componentes de mascotas
-│   ├── historia/     # Historia clínica
-│   └── layout/       # Layout y navegación
-├── views/            # Páginas principales
-├── lib/              # Utilidades y types
-├── hooks/            # Custom hooks
-└── context/          # React Context
-```
-
-## Estado Actual
-
-**Fase 1 completada** ✅
-- Setup base y estructura de carpetas
-- React Router configurado
-- Sidebar navigation con shadcn/ui
-- Types y mock data definidos
-
-**Próximo**: Fase 2 - CRUD de Clientes y Mascotas
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+├── components/
+│   ├── ui/               # shadcn/ui
+│   ├── clientes/
+│   ├── mascotas/
+│   ├── historia/
+│   ├── turnos/
+│   ├── recordatorios/
+│   ├── pagos/
+│   ├── productos/
+│   ├── ventas/
+│   ├── vacunas/
+│   └── layout/
+├── views/
+│   ├── DashboardView/
+│   ├── ClientesView/
+│   ├── MascotasView/
+│   ├── TurnosView/
+│   ├── RecordatoriosView/
+│   ├── PagosView/
+│   ├── ProductosView/
+│   └── VentasView/
+├── services/             # Capa de datos (Supabase)
+├── hooks/                # TanStack Query hooks
+└── lib/                  # Types, schemas, router, utils
 ```
