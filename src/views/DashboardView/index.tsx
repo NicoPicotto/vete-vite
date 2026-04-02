@@ -3,17 +3,21 @@ import { useClientes } from '@/hooks/useClientes';
 import { useMascotas } from '@/hooks/useMascotas';
 import { useRecordatorios } from '@/hooks/useRecordatorios';
 import { useItemsPago } from '@/hooks/usePagos';
+import { useTurnos } from '@/hooks/useTurnos';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, PawPrint, Bell, CreditCard, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Users, PawPrint, Bell, CreditCard, CalendarClock, Loader2 } from 'lucide-react';
+import { format, startOfDay, endOfDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function DashboardView() {
-  // Hooks de datos
   const { data: clientes = [], isLoading: isLoadingClientes } = useClientes();
   const { data: mascotas = [], isLoading: isLoadingMascotas } = useMascotas();
   const { data: recordatorios = [], isLoading: isLoadingRecordatorios } = useRecordatorios();
   const { data: itemsPago = [], isLoading: isLoadingPagos } = useItemsPago();
+  const { data: turnos = [], isLoading: isLoadingTurnos } = useTurnos();
 
-  // Calcular recordatorios pendientes
+  // Recordatorios pendientes
   const recordatoriosPendientes = useMemo(() => {
     return recordatorios
       .filter((r) => r.estado === 'Pendiente' || r.estado === 'Reprogramado')
@@ -28,39 +32,45 @@ export default function DashboardView() {
       });
   }, [recordatorios, clientes, mascotas]);
 
-  // Calcular deuda total y saldo por cliente
-  const { totalDeuda, saldosPorCliente } = useMemo(() => {
-    const saldos = new Map<string, number>();
+  // Deuda total
+  const totalDeuda = useMemo(() => {
     let total = 0;
-
     itemsPago.forEach((item) => {
-      // Solo calcular saldo si el item tiene cliente asociado (no ventas al paso)
       if (!item.clienteId) return;
-
       const saldo = item.monto - item.montoPagado;
-      if (saldo > 0) {
-        saldos.set(item.clienteId, (saldos.get(item.clienteId) || 0) + saldo);
-        total += saldo;
-      }
+      if (saldo > 0) total += saldo;
     });
-
-    return { totalDeuda: total, saldosPorCliente: saldos };
+    return total;
   }, [itemsPago]);
 
-  // Clientes con deuda
-  const clientesConDeuda = useMemo(() => {
-    return clientes
-      .filter((c) => (saldosPorCliente.get(c.id) || 0) > 0)
-      .map((c) => ({
-        ...c,
-        saldo: saldosPorCliente.get(c.id) || 0,
-      }))
-      .sort((a, b) => b.saldo - a.saldo);
-  }, [clientes, saldosPorCliente]);
+  // Turnos de hoy
+  const turnosHoy = useMemo(() => {
+    const hoy = new Date();
+    return turnos
+      .filter((t) => {
+        const fecha = new Date(t.fechaHora);
+        return fecha >= startOfDay(hoy) && fecha <= endOfDay(hoy);
+      })
+      .sort((a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime());
+  }, [turnos]);
 
-  const isLoading = isLoadingClientes || isLoadingMascotas || isLoadingRecordatorios || isLoadingPagos;
+  const getBadgeEstado = (estado: string) => {
+    switch (estado) {
+      case 'Confirmado': return 'default';
+      case 'Completado': return 'secondary';
+      case 'Cancelado':
+      case 'No se presentó': return 'outline';
+      default: return 'destructive';
+    }
+  };
 
-  // Mostrar loading mientras carga
+  const isLoading =
+    isLoadingClientes ||
+    isLoadingMascotas ||
+    isLoadingRecordatorios ||
+    isLoadingPagos ||
+    isLoadingTurnos;
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
@@ -118,7 +128,10 @@ export default function DashboardView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Recordatorios Próximos</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Recordatorios Próximos
+            </CardTitle>
             <CardDescription>Consultas y tratamientos pendientes</CardDescription>
           </CardHeader>
           <CardContent>
@@ -154,25 +167,44 @@ export default function DashboardView() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Clientes con Deuda</CardTitle>
-            <CardDescription>Saldos pendientes de pago</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" />
+              Turnos de Hoy
+            </CardTitle>
+            <CardDescription>
+              {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {clientesConDeuda.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay clientes con deuda pendiente</p>
+            {turnosHoy.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay turnos para hoy</p>
             ) : (
               <div className="space-y-3">
-                {clientesConDeuda.slice(0, 5).map((cliente) => (
-                  <div key={cliente.id} className="flex justify-between items-center border-b pb-2 last:border-0">
-                    <div>
-                      <p className="font-medium text-sm">{cliente.nombre} {cliente.apellido}</p>
-                      <p className="text-xs text-muted-foreground">{cliente.telefono}</p>
+                {turnosHoy.map((turno) => {
+                  const hora = format(new Date(turno.fechaHora), 'HH:mm');
+                  return (
+                    <div key={turno.id} className="flex justify-between items-start border-b pb-2 last:border-0">
+                      <div>
+                        <p className="font-medium text-sm">
+                          {turno.clienteNombre} {turno.clienteApellido}
+                          {turno.mascotaNombre && (
+                            <span className="font-normal text-muted-foreground"> — {turno.mascotaNombre}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{turno.clienteTelefono}</p>
+                        {turno.notas && (
+                          <p className="text-xs text-muted-foreground">{turno.notas}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                        <span className="text-sm font-semibold">{hora}</span>
+                        <Badge variant={getBadgeEstado(turno.estado)} className="text-xs">
+                          {turno.estado}
+                        </Badge>
+                      </div>
                     </div>
-                    <span className="text-sm font-semibold text-destructive">
-                      ${cliente.saldo.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

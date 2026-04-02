@@ -7,6 +7,7 @@ import MascotasView from '@/views/MascotasView';
 import MascotaDetail from '@/views/MascotasView/MascotaDetail';
 import PagosView from '@/views/PagosView';
 import RecordatoriosView from '@/views/RecordatoriosView';
+import TurnosView from '@/views/TurnosView';
 import ProductosView from '@/views/ProductosView';
 import VentasView from '@/views/VentasView';
 import NuevaVenta from '@/views/VentasView/NuevaVenta';
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: 'recordatorios',
         element: <RecordatoriosView />,
+      },
+      {
+        path: 'turnos',
+        element: <TurnosView />,
       },
       {
         path: 'productos',

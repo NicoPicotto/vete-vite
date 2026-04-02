@@ -251,6 +251,30 @@ export interface VentaFormInput {
 }
 
 // ============================================
+// TURNOS
+// ============================================
+export type TipoTurno = 'Consulta' | 'Control';
+export type EstadoTurno = 'Pendiente' | 'Confirmado' | 'Cancelado' | 'Completado' | 'No se presentó';
+
+export interface Turno {
+  id: string;
+  clienteId: string;
+  mascotaId?: string;
+  fechaHora: Date;
+  tipo: TipoTurno;
+  notas?: string;
+  estado: EstadoTurno;
+  // Campos extra desde la view turnos_con_detalle
+  clienteNombre?: string;
+  clienteApellido?: string;
+  clienteTelefono?: string;
+  mascotaNombre?: string;
+  mascotaEspecie?: string;
+}
+
+export type TurnoFormData = Omit<Turno, 'id' | 'clienteNombre' | 'clienteApellido' | 'clienteTelefono' | 'mascotaNombre' | 'mascotaEspecie'>;
+
+// ============================================
 // UTILIDADES
 // ============================================
 export interface SelectOption {
