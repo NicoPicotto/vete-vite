@@ -1,9 +1,11 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, User, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Eye, User, Loader2, Search } from 'lucide-react';
 import { useMascotas } from '@/hooks/useMascotas';
 import { useClientes } from '@/hooks/useClientes';
 import { calcularEdad } from '@/lib/utils';
@@ -12,10 +14,26 @@ export default function MascotasView() {
   const { data: mascotas = [], isLoading: isLoadingMascotas, error: errorMascotas } = useMascotas();
   const { data: clientes = [] } = useClientes();
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Helper para obtener cliente por ID
   const getClienteById = (clienteId: string) => {
     return clientes.find(c => c.id === clienteId);
   };
+
+  const mascotasFiltradas = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return mascotas;
+    return mascotas.filter((m) => {
+      if (m.nombre.toLowerCase().includes(term)) return true;
+      const cliente = clientes.find(c => c.id === m.clienteId);
+      if (!cliente) return false;
+      return (
+        cliente.nombre.toLowerCase().includes(term) ||
+        cliente.apellido.toLowerCase().includes(term)
+      );
+    });
+  }, [mascotas, clientes, searchTerm]);
 
   // Mostrar error
   if (errorMascotas) {
@@ -48,8 +66,17 @@ export default function MascotasView() {
         <CardHeader>
           <CardTitle>Todas las Mascotas</CardTitle>
           <CardDescription>
-            {isLoadingMascotas ? 'Cargando...' : `${mascotas.length} mascota${mascotas.length !== 1 ? 's' : ''} registrada${mascotas.length !== 1 ? 's' : ''}`}
+            {isLoadingMascotas ? 'Cargando...' : `${mascotasFiltradas.length} de ${mascotas.length} mascota${mascotas.length !== 1 ? 's' : ''}`}
           </CardDescription>
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre de mascota o dueño..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingMascotas ? (
@@ -59,6 +86,12 @@ export default function MascotasView() {
           ) : mascotas.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No hay mascotas registradas</p>
+            </div>
+          ) : mascotasFiltradas.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                No se encontraron mascotas para "{searchTerm}"
+              </p>
             </div>
           ) : (
           <Table>
@@ -75,7 +108,7 @@ export default function MascotasView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mascotas.map((mascota) => {
+              {mascotasFiltradas.map((mascota) => {
                 const cliente = getClienteById(mascota.clienteId);
 
                 return (

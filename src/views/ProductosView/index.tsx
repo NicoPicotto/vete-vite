@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,12 +46,22 @@ export default function ProductosView() {
   const [productoToDelete, setProductoToDelete] = useState<Producto | null>(null);
 
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaProducto | 'Todas'>('Todas');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtrar productos por categoría
-  const productosFiltrados =
-    filtroCategoria === 'Todas'
+  const productosFiltrados = useMemo(() => {
+    const result = filtroCategoria === 'Todas'
       ? productos
       : productos.filter((p) => p.categoria === filtroCategoria);
+
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return result;
+
+    return result.filter(
+      (p) =>
+        p.nombre.toLowerCase().includes(term) ||
+        (p.sku ?? '').toLowerCase().includes(term)
+    );
+  }, [productos, filtroCategoria, searchTerm]);
 
   const handleCreateProducto = () => {
     setFormMode('create');
@@ -156,11 +167,11 @@ export default function ProductosView() {
               <CardDescription>
                 {isLoading
                   ? 'Cargando...'
-                  : `${productosFiltrados.length} producto${productosFiltrados.length !== 1 ? 's' : ''}`}
+                  : `${productosFiltrados.length} de ${productos.length} producto${productos.length !== 1 ? 's' : ''}`}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filtrar:</span>
+              <span className="text-sm text-muted-foreground">Categoría:</span>
               <Select
                 value={filtroCategoria}
                 onValueChange={(value) => setFiltroCategoria(value as CategoriaProducto | 'Todas')}
@@ -177,6 +188,15 @@ export default function ProductosView() {
               </Select>
             </div>
           </div>
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre o SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -185,9 +205,11 @@ export default function ProductosView() {
             </div>
           ) : productosFiltrados.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              {filtroCategoria === 'Todas'
-                ? 'No hay productos registrados. Crea el primero.'
-                : `No hay productos en la categoría ${filtroCategoria}.`}
+              {searchTerm
+                ? `No se encontraron productos para "${searchTerm}".`
+                : filtroCategoria === 'Todas'
+                  ? 'No hay productos registrados. Crea el primero.'
+                  : `No hay productos en la categoría ${filtroCategoria}.`}
             </div>
           ) : (
             <div className="overflow-x-auto">

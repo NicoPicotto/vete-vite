@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, Loader2 } from "lucide-react";
+import { Plus, Eye, Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import type { ClienteFormValues } from "@/lib/schemas";
 import { useClientes, useCreateCliente } from "@/hooks/useClientes";
@@ -65,6 +66,18 @@ export default function ClientesView() {
    };
 
    const [isFormOpen, setIsFormOpen] = useState(false);
+   const [searchTerm, setSearchTerm] = useState("");
+
+   const clientesFiltrados = useMemo(() => {
+      const term = searchTerm.toLowerCase().trim();
+      if (!term) return clientes;
+      return clientes.filter(
+         (c) =>
+            c.nombre.toLowerCase().includes(term) ||
+            c.apellido.toLowerCase().includes(term) ||
+            c.telefono.includes(term),
+      );
+   }, [clientes, searchTerm]);
 
    const handleCreateCliente = (data: ClienteFormValues) => {
       createClienteMutation.mutate(data, {
@@ -126,8 +139,17 @@ export default function ClientesView() {
                <CardDescription>
                   {isLoading
                      ? "Cargando..."
-                     : `${clientes.length} cliente${clientes.length !== 1 ? "s" : ""} registrado${clientes.length !== 1 ? "s" : ""}`}
+                     : `${clientesFiltrados.length} de ${clientes.length} cliente${clientes.length !== 1 ? "s" : ""}`}
                </CardDescription>
+               <div className="relative mt-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                     placeholder="Buscar por nombre, apellido o teléfono..."
+                     value={searchTerm}
+                     onChange={(e) => setSearchTerm(e.target.value)}
+                     className="pl-9"
+                  />
+               </div>
             </CardHeader>
             <CardContent>
                {isLoading ? (
@@ -144,13 +166,18 @@ export default function ClientesView() {
                         Crear Primer Cliente
                      </Button>
                   </div>
+               ) : clientesFiltrados.length === 0 ? (
+                  <div className="text-center py-8">
+                     <p className="text-muted-foreground">
+                        No se encontraron clientes para "{searchTerm}"
+                     </p>
+                  </div>
                ) : (
                   <Table>
                      <TableHeader>
                         <TableRow>
                            <TableHead>Nombre</TableHead>
                            <TableHead>Teléfono</TableHead>
-
                            <TableHead>Mascotas</TableHead>
                            <TableHead>Saldo</TableHead>
                            <TableHead className='text-right'>
@@ -159,7 +186,7 @@ export default function ClientesView() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {clientes.map((cliente) => {
+                        {clientesFiltrados.map((cliente) => {
                            const mascotasCount = getMascotasCountByClienteId(
                               cliente.id,
                            );
