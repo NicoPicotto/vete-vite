@@ -7,6 +7,7 @@ import {
    Bell,
    Package,
    ShoppingCart,
+   CalendarClock,
 } from "lucide-react";
 import {
    Sidebar,
@@ -34,6 +35,7 @@ const navigation: NavItem[] = [
    { title: "Productos", href: "/productos", icon: Package },
    { title: "Ventas", href: "/ventas", icon: ShoppingCart },
    { title: "Pagos", href: "/pagos", icon: CreditCard },
+   { title: "Turnos", href: "/turnos", icon: CalendarClock },
    { title: "Recordatorios", href: "/recordatorios", icon: Bell },
 ];
 

@@ -292,3 +292,23 @@ export const ventaSchema = z.object({
 });
 
 export type VentaFormValues = z.infer<typeof ventaSchema>;
+
+// ============================================
+// TURNO SCHEMA
+// ============================================
+
+export const turnoSchema = z.object({
+  clienteId: z.string().min(1, 'Debes seleccionar un cliente'),
+  mascotaId: z.string().optional().or(z.literal('')),
+  fecha: z.string().min(1, 'Debes seleccionar una fecha'), // YYYY-MM-DD
+  hora: z.string().min(1, 'Debes seleccionar una hora'), // HH:MM
+  tipo: z.enum(['Consulta', 'Control']),
+  notas: z
+    .string()
+    .max(1000, 'Las notas no pueden exceder 1000 caracteres')
+    .optional()
+    .or(z.literal('')),
+  estado: z.enum(['Pendiente', 'Confirmado', 'Cancelado', 'Completado', 'No se presentó']),
+});
+
+export type TurnoFormValues = z.infer<typeof turnoSchema>;
