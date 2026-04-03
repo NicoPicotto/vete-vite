@@ -11,6 +11,7 @@ FEATURE_VENTA_DESDE_CLIENTE.md
 MODULOS_VENTAS_PRODUCTOS.md
 supabase-schema.sql
 supabase-schema-ventas-productos.sql
+SAAS-ROADMAP.md
 
 .env
 supabase-migrations
@@ -19,6 +20,9 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Dev tools (locales, no deployar)
+public/neko-modifier.html
 
 # Editor directories and files
 .vscode/*

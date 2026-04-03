@@ -21,6 +21,12 @@ import {
    SidebarMenuButton,
    SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useNeko } from "@/hooks/useNeko";
+import {
+   Tooltip,
+   TooltipContent,
+   TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavItem {
    title: string;
@@ -41,6 +47,7 @@ const navigation: NavItem[] = [
 
 export function AppSidebar() {
    const location = useLocation();
+   const { isActive, toggle } = useNeko();
 
    return (
       <Sidebar>
@@ -76,7 +83,25 @@ export function AppSidebar() {
             </SidebarGroup>
          </SidebarContent>
 
-         <SidebarFooter></SidebarFooter>
+         <SidebarFooter>
+            <Tooltip>
+               <TooltipTrigger asChild>
+                  <button
+                     onClick={toggle}
+                     className='flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  >
+                     <span className='text-base leading-none'>{isActive ? "🐱" : "😺"}</span>
+                     <span>{isActive ? "Despedir a Gina" : "Llamar a Gina"}</span>
+                     
+                  </button>
+               </TooltipTrigger>
+               <TooltipContent side='top' className='max-w-52 text-center'>
+                  {isActive
+                     ? "Hacé clic sobre Gina para cambiar su comportamiento: puede seguirte, huir de vos, caminar sola o perseguir una pelota."
+                     : "¡Llamá a Gina para que aparezca en pantalla!"}
+               </TooltipContent>
+            </Tooltip>
+         </SidebarFooter>
       </Sidebar>
    );
 }
