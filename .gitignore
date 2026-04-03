@@ -21,6 +21,9 @@ dist
 dist-ssr
 *.local
 
+# Dev tools (locales, no deployar)
+public/neko-modifier.html
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
