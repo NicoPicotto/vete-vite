@@ -38,10 +38,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, ShoppingCart } from "lucide-react";
-import { useClientes } from "@/hooks/useClientes";
+import { Plus, Trash2, ShoppingCart, UserPlus } from "lucide-react";
+import { useClientes, useCreateCliente } from "@/hooks/useClientes";
 import { useProductos } from "@/hooks/useProductos";
 import { calcularRecargo } from "@/services/ventas.service";
+import { ClienteForm } from "@/components/clientes/ClienteForm";
 
 interface CartItem {
    producto: Producto;
@@ -67,7 +68,9 @@ export function VentaForm({
 }: VentaFormProps) {
    const { data: clientes = [] } = useClientes();
    const { data: productos = [] } = useProductos();
+   const createClienteMutation = useCreateCliente();
 
+   const [crearClienteOpen, setCrearClienteOpen] = useState(false);
    const [cart, setCart] = useState<CartItem[]>([]);
    const [selectedProductoId, setSelectedProductoId] = useState("");
    const [cantidad, setCantidad] = useState(1);
@@ -184,6 +187,16 @@ export function VentaForm({
    // Calcular total final (subtotal + recargo)
    const total = subtotal + recargo;
 
+   // Crear cliente rápido desde la venta y auto-seleccionarlo
+   const handleCrearCliente = (data: import('@/lib/schemas').ClienteFormValues) => {
+      createClienteMutation.mutate(data, {
+         onSuccess: (newCliente) => {
+            setValue('clienteId', newCliente.id);
+            setCrearClienteOpen(false);
+         },
+      });
+   };
+
    // Enviar formulario
    const handleFormSubmit = (data: VentaFormValues) => {
       if (cart.length === 0) {
@@ -214,7 +227,21 @@ export function VentaForm({
                <div className='grid md:grid-cols-2 gap-4'>
                   {/* Cliente */}
                   <div className='space-y-2 self-end'>
-                     <Label htmlFor='clienteId'>Cliente (opcional)</Label>
+                     <div className='flex items-center justify-between'>
+                        <Label htmlFor='clienteId'>Cliente (opcional)</Label>
+                        {!readonlyCliente && (
+                           <Button
+                              type='button'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => setCrearClienteOpen(true)}
+                              className='h-auto p-0 text-xs text-primary hover:bg-transparent hover:underline'
+                           >
+                              <UserPlus className='h-3 w-3' />
+                              Nuevo cliente
+                           </Button>
+                        )}
+                     </div>
                      <p className='text-xs text-muted-foreground'>
                         Deja en blanco para ventas al paso (sin cliente)
                      </p>
@@ -559,6 +586,13 @@ export function VentaForm({
                {isSubmitting ? "Guardando..." : "Registrar Venta"}
             </Button>
          </div>
+
+         <ClienteForm
+            open={crearClienteOpen}
+            onOpenChange={setCrearClienteOpen}
+            onSubmit={handleCrearCliente}
+            mode='create'
+         />
       </form>
    );
 }
