@@ -18,7 +18,8 @@ interface VentaDB {
 interface VentaItemDB {
   id: string;
   venta_id: string;
-  producto_id: string;
+  producto_id: string | null; // NULL para ítems en blanco/personalizados
+  nombre: string | null; // Solo para ítems en blanco
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
@@ -56,7 +57,8 @@ const dbToVenta = (db: VentaDB, items?: VentaItemDB[]): Venta => ({
 const dbToVentaItem = (db: VentaItemDB): VentaItem => ({
   id: db.id,
   ventaId: db.venta_id,
-  productoId: db.producto_id,
+  productoId: db.producto_id || undefined,
+  nombre: db.nombre || undefined,
   cantidad: db.cantidad,
   precioUnitario: db.precio_unitario,
   subtotal: db.subtotal,
@@ -186,7 +188,8 @@ export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => 
   // 2. Crear los items de la venta
   const itemsToInsert = ventaData.items.map((item) => ({
     venta_id: ventaId,
-    producto_id: item.productoId,
+    producto_id: item.productoId || null, // NULL para ítems en blanco
+    nombre: item.nombre || null, // Solo para ítems en blanco
     cantidad: item.cantidad,
     precio_unitario: item.precioUnitario,
     subtotal: item.cantidad * item.precioUnitario,
@@ -204,22 +207,30 @@ export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => 
 
   // 3. Crear ItemPago asociado SOLO si hay cliente (no para ventas al paso)
   if (!esVentaAlPaso) {
-    // Obtener nombres de productos para descripción más descriptiva
-    const productosIds = ventaData.items.map((item) => item.productoId);
-    const { data: productosData, error: productosError } = await supabase
-      .from('productos')
-      .select('id, nombre')
-      .in('id', productosIds);
+    // Separar ítems con producto real (para lookup de nombres) de ítems en blanco
+    const itemsConProducto = ventaData.items.filter((item) => item.productoId);
 
-    if (productosError) {
-      console.error('Error al obtener nombres de productos para descripción:', productosError);
+    // Obtener nombres de los productos reales para la descripción
+    let productosMap = new Map<string, string>();
+    if (itemsConProducto.length > 0) {
+      const productosIds = itemsConProducto.map((item) => item.productoId as string);
+      const { data: productosData, error: productosError } = await supabase
+        .from('productos')
+        .select('id, nombre')
+        .in('id', productosIds);
+
+      if (productosError) {
+        console.error('Error al obtener nombres de productos para descripción:', productosError);
+      }
+      productosMap = new Map(productosData?.map((p) => [p.id, p.nombre]) || []);
     }
 
-    // Crear descripción con nombres de productos y cantidades (ej: "Pipeta 100mg x3, Shampoo x1")
-    const productosMap = new Map(productosData?.map((p) => [p.id, p.nombre]) || []);
+    // Crear descripción combinando productos reales e ítems en blanco
     const descripcionProductos = ventaData.items
       .map((item) => {
-        const nombre = productosMap.get(item.productoId) || 'Producto';
+        const nombre = item.productoId
+          ? (productosMap.get(item.productoId) || 'Producto')
+          : (item.nombre || 'Ítem personalizado');
         return `${nombre} x${item.cantidad}`;
       })
       .join(', ');

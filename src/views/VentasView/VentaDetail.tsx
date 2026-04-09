@@ -34,7 +34,8 @@ export default function VentaDetail() {
   const deleteVentaMutation = useDeleteVenta();
 
   // Helper para obtener nombre de producto por ID
-  const getProductoNombre = (productoId: string) => {
+  const getProductoNombre = (productoId?: string) => {
+    if (!productoId) return null;
     const producto = productos.find((p) => p.id === productoId);
     return producto ? producto.nombre : `Producto #${productoId.slice(0, 8)}...`;
   };
@@ -229,7 +230,9 @@ export default function VentaDetail() {
                   {venta.items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
-                        {getProductoNombre(item.productoId)}
+                        {item.productoId
+                          ? getProductoNombre(item.productoId)
+                          : (item.nombre ?? 'Ítem personalizado')}
                       </TableCell>
                       <TableCell className="text-right">${item.precioUnitario}</TableCell>
                       <TableCell className="text-center">{item.cantidad}</TableCell>

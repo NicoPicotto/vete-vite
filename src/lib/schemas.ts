@@ -264,7 +264,8 @@ export type ProductoFormValues = z.infer<typeof productoSchema>;
 // ============================================
 
 export const ventaItemInputSchema = z.object({
-  productoId: z.string().min(1, 'Debes seleccionar un producto'),
+  productoId: z.string().optional(), // Opcional: ausente en ítems en blanco
+  nombre: z.string().optional(), // Solo para ítems en blanco
   cantidad: z
     .number()
     .int('Debe ser un número entero')
