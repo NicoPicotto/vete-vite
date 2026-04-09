@@ -213,7 +213,8 @@ export type MetodoPago = 'Contado' | 'Débito' | 'Crédito';
 export interface VentaItem {
   id: string;
   ventaId: string;
-  productoId: string;
+  productoId?: string; // NULL para ítems en blanco/personalizados
+  nombre?: string; // Nombre personalizado (solo para ítems en blanco)
   cantidad: number;
   precioUnitario: number; // Snapshot del precio al momento de la venta
   subtotal: number; // cantidad * precioUnitario
@@ -236,9 +237,10 @@ export type VentaFormData = Omit<Venta, 'id' | 'fechaCreacion' | 'estadoPago' | 
 
 // Para el formulario de nueva venta (carrito)
 export interface VentaItemInput {
-  productoId: string;
+  productoId?: string; // Opcional: NULL para ítems en blanco/personalizados
+  nombre?: string; // Solo para ítems en blanco (cuando no hay productoId)
   cantidad: number;
-  precioUnitario: number; // Se obtiene del producto
+  precioUnitario: number; // Se obtiene del producto o se ingresa manualmente
 }
 
 export interface VentaFormInput {
