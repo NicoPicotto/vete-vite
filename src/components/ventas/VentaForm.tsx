@@ -519,10 +519,11 @@ export function VentaForm({
                         <Input
                            id='cantidad'
                            type='number'
-                           min='1'
+                           min='0.001'
+                           step='any'
                            value={cantidad}
                            onChange={(e) =>
-                              setCantidad(parseInt(e.target.value) || 1)
+                              setCantidad(parseFloat(e.target.value) || 1)
                            }
                         />
                      </div>
@@ -735,13 +736,14 @@ export function VentaForm({
                         <Input
                            id='ip-precio'
                            type='number'
-                           min='1'
+                           min='0'
+                           step='any'
                            placeholder='0'
                            value={itemPersonalizado.precio || ""}
                            onChange={(e) =>
                               setItemPersonalizado((prev) => ({
                                  ...prev,
-                                 precio: parseInt(e.target.value) || 0,
+                                 precio: parseFloat(e.target.value) || 0,
                               }))
                            }
                         />
@@ -751,12 +753,13 @@ export function VentaForm({
                         <Input
                            id='ip-cantidad'
                            type='number'
-                           min='1'
+                           min='0.001'
+                           step='any'
                            value={itemPersonalizado.cantidad}
                            onChange={(e) =>
                               setItemPersonalizado((prev) => ({
                                  ...prev,
-                                 cantidad: parseInt(e.target.value) || 1,
+                                 cantidad: parseFloat(e.target.value) || 1,
                               }))
                            }
                         />

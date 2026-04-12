@@ -112,8 +112,7 @@ export const historiaClinicaSchema = z.object({
   fecha: z.date(),
   motivoConsulta: z
     .string()
-    .min(3, 'El motivo debe tener al menos 3 caracteres')
-    .max(500, 'El motivo no puede exceder 500 caracteres'),
+    .min(3, 'El motivo debe tener al menos 3 caracteres'),
   peso: z
     .number()
     .positive('El peso debe ser positivo')
@@ -268,7 +267,7 @@ export const ventaItemInputSchema = z.object({
   nombre: z.string().optional(), // Solo para ítems en blanco
   cantidad: z
     .number()
-    .int('Debe ser un número entero')
+    //.int('Debe ser un número entero')
     .positive('La cantidad debe ser positiva')
     .max(999999, 'La cantidad es excesiva'),
   precioUnitario: z
