@@ -249,7 +249,7 @@ export default function PagosView() {
                             const pendiente = item.monto - item.montoPagado;
                             return (
                               <TableRow key={item.id}>
-                                <TableCell className="font-medium">
+                                <TableCell className="font-medium max-w-45 truncate" title={item.descripcion}>
                                   {item.descripcion}
                                 </TableCell>
                                 <TableCell>

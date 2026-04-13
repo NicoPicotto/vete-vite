@@ -245,10 +245,10 @@ export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => 
         cliente_id: ventaData.clienteId,
         venta_id: ventaId,
         descripcion: `Venta: ${descripcionProductos}`,
-        monto: total,
+        monto: Math.round(total), // items_pago almacena pesos enteros
         fecha: ventaData.fecha.toISOString(),
         estado: estadoPagoInicial,
-        monto_pagado: montoPagadoInicial,
+        monto_pagado: Math.round(montoPagadoInicial),
       })
       .select()
       .single();

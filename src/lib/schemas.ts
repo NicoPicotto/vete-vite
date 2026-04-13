@@ -241,12 +241,10 @@ export const productoSchema = z.object({
     .max(999999999, 'El precio es excesivo'),
   cantidadExistente: z
     .number()
-    .int('Debe ser un número entero')
     .min(0, 'La cantidad no puede ser negativa')
     .max(999999, 'La cantidad es excesiva'),
   cantidadIdeal: z
     .number()
-    .int('Debe ser un número entero')
     .min(0, 'La cantidad no puede ser negativa')
     .max(999999, 'La cantidad es excesiva'),
   notas: z

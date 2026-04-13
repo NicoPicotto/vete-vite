@@ -212,6 +212,8 @@ export function ProductoForm({
               <Input
                 id="cantidadExistente"
                 type="number"
+                step="any"
+                min="0"
                 {...register('cantidadExistente', { valueAsNumber: true })}
                 placeholder="0"
               />
@@ -225,6 +227,8 @@ export function ProductoForm({
               <Input
                 id="cantidadIdeal"
                 type="number"
+                step="any"
+                min="0"
                 {...register('cantidadIdeal', { valueAsNumber: true })}
                 placeholder="0"
               />
