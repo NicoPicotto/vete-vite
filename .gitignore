@@ -12,6 +12,7 @@ MODULOS_VENTAS_PRODUCTOS.md
 supabase-schema.sql
 supabase-schema-ventas-productos.sql
 SAAS-ROADMAP.md
+supabase-migration-decimal-quantities.sql
 
 .env
 supabase-migrations

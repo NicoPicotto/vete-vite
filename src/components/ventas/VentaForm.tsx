@@ -66,7 +66,7 @@ interface CartItem {
 interface ItemPersonalizadoForm {
    nombre: string;
    precio: number;
-   cantidad: number;
+   cantidadStr: string;
 }
 
 interface VentaFormProps {
@@ -93,12 +93,12 @@ export function VentaForm({
    const [crearClienteOpen, setCrearClienteOpen] = useState(false);
    const [cart, setCart] = useState<CartItem[]>([]);
    const [selectedProductoId, setSelectedProductoId] = useState("");
-   const [cantidad, setCantidad] = useState(1);
+   const [cantidadStr, setCantidadStr] = useState("1");
 
    // Estado del dialog de ítem personalizado
    const [itemPersonalizadoOpen, setItemPersonalizadoOpen] = useState(false);
    const [itemPersonalizado, setItemPersonalizado] =
-      useState<ItemPersonalizadoForm>({ nombre: "", precio: 0, cantidad: 1 });
+      useState<ItemPersonalizadoForm>({ nombre: "", precio: 0, cantidadStr: "1" });
 
    const {
       register,
@@ -163,7 +163,8 @@ export function VentaForm({
 
    // Agregar producto del inventario al carrito
    const handleAddToCart = () => {
-      if (!selectedProductoId) return;
+      const cantidad = parseFloat(cantidadStr);
+      if (!selectedProductoId || isNaN(cantidad) || cantidad <= 0) return;
 
       const producto = productos.find((p) => p.id === selectedProductoId);
       if (!producto) return;
@@ -202,14 +203,15 @@ export function VentaForm({
       }
 
       setSelectedProductoId("");
-      setCantidad(1);
+      setCantidadStr("1");
    };
 
    // Agregar ítem personalizado al carrito
    const handleAddItemPersonalizado = () => {
+      const cantidad = parseFloat(itemPersonalizado.cantidadStr);
       if (!itemPersonalizado.nombre.trim()) return;
       if (itemPersonalizado.precio <= 0) return;
-      if (itemPersonalizado.cantidad <= 0) return;
+      if (isNaN(cantidad) || cantidad <= 0) return;
 
       setCart([
          ...cart,
@@ -217,13 +219,13 @@ export function VentaForm({
             tipo: "personalizado",
             nombre: itemPersonalizado.nombre.trim(),
             precioPersonalizado: itemPersonalizado.precio,
-            cantidad: itemPersonalizado.cantidad,
+            cantidad,
             _id: crypto.randomUUID(),
          },
       ]);
 
       // Resetear y cerrar
-      setItemPersonalizado({ nombre: "", precio: 0, cantidad: 1 });
+      setItemPersonalizado({ nombre: "", precio: 0, cantidadStr: "1" });
       setItemPersonalizadoOpen(false);
    };
 
@@ -521,10 +523,8 @@ export function VentaForm({
                            type='number'
                            min='0.001'
                            step='any'
-                           value={cantidad}
-                           onChange={(e) =>
-                              setCantidad(parseFloat(e.target.value) || 1)
-                           }
+                           value={cantidadStr}
+                           onChange={(e) => setCantidadStr(e.target.value)}
                         />
                      </div>
 
@@ -755,11 +755,11 @@ export function VentaForm({
                            type='number'
                            min='0.001'
                            step='any'
-                           value={itemPersonalizado.cantidad}
+                           value={itemPersonalizado.cantidadStr}
                            onChange={(e) =>
                               setItemPersonalizado((prev) => ({
                                  ...prev,
-                                 cantidad: parseFloat(e.target.value) || 1,
+                                 cantidadStr: e.target.value,
                               }))
                            }
                         />
@@ -780,7 +780,7 @@ export function VentaForm({
                      disabled={
                         !itemPersonalizado.nombre.trim() ||
                         itemPersonalizado.precio <= 0 ||
-                        itemPersonalizado.cantidad <= 0
+                        !(parseFloat(itemPersonalizado.cantidadStr) > 0)
                      }
                   >
                      <Plus className='mr-2 h-4 w-4' />
