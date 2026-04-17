@@ -6,6 +6,7 @@ import {
   useCreatePagoParcial,
 } from '@/hooks/usePagos';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -31,10 +32,11 @@ import { PagoItemForm } from '@/components/pagos/PagoItemForm';
 import { PagoParcialForm } from '@/components/pagos/PagoParcialForm';
 import type { ItemPago } from '@/lib/types';
 import type { PagoParcialFormValues } from '@/lib/schemas';
-import { DollarSign, Pencil, Trash2, CreditCard, User, Loader2 } from 'lucide-react';
+import { DollarSign, Pencil, Trash2, CreditCard, User, Loader2, Copy, Check, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export default function PagosView() {
   const navigate = useNavigate();
@@ -55,6 +57,12 @@ export default function PagosView() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemPago | null>(null);
 
+  // Estado para feedback de copia
+  const [copiedClienteId, setCopiedClienteId] = useState<string | null>(null);
+
+  // Estado para búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+
   // ============================================
   // CALCULOS
   // ============================================
@@ -74,6 +82,16 @@ export default function PagosView() {
     }))
     .filter((cliente) => cliente.saldoPendiente > 0)
     .sort((a, b) => b.saldoPendiente - a.saldoPendiente);
+
+  const clientesConSaldoFiltrados = clientesConSaldo.filter((cliente) => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      cliente.nombre.toLowerCase().includes(term) ||
+      cliente.apellido.toLowerCase().includes(term) ||
+      cliente.telefono.includes(term)
+    );
+  });
 
   // ============================================
   // HANDLERS - ITEM PAGO
@@ -151,6 +169,31 @@ export default function PagosView() {
     return itemsPago.filter((item) => item.clienteId === clienteId);
   };
 
+  const handleCopiarEstadoCuenta = (
+    cliente: (typeof clientesConSaldo)[0],
+    items: ItemPago[]
+  ) => {
+    const itemsPendientes = items.filter((i) => i.estado !== 'Pagado');
+    const hoy = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
+
+    const lineasItems = itemsPendientes
+      .map((item) => {
+        const pendiente = item.monto - item.montoPagado;
+        const fecha = format(item.fecha, 'dd/MM/yyyy', { locale: es });
+        const pagado = item.montoPagado > 0 ? `\n   ✅ Pagado: $${Math.round(item.montoPagado).toLocaleString()}` : '';
+        return `• ${item.descripcion}\n   📅 Fecha: ${fecha} | Total: $${Math.round(item.monto).toLocaleString()}${pagado}\n   ⏳ Pendiente: $${Math.round(pendiente).toLocaleString()}`;
+      })
+      .join('\n\n');
+
+    const texto = `*Estado de Cuenta — ${cliente.nombre} ${cliente.apellido}*\n📅 ${hoy}\n\n${lineasItems}\n\n━━━━━━━━━━━━━━━\n💰 *TOTAL ADEUDADO: $${Math.round(cliente.saldoPendiente).toLocaleString()}*`;
+
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiedClienteId(cliente.id);
+      toast.success('Estado de cuenta copiado');
+      setTimeout(() => setCopiedClienteId(null), 2000);
+    });
+  };
+
   // ============================================
   // LOADING STATE
   // ============================================
@@ -172,7 +215,7 @@ export default function PagosView() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mb-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Pagos y Cuentas</h1>
@@ -196,18 +239,31 @@ export default function PagosView() {
 
         {/* TAB 1: Clientes con Saldo */}
         <TabsContent value="saldos" className="space-y-4">
-          {clientesConSaldo.length === 0 ? (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, apellido o teléfono..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {clientesConSaldoFiltrados.length === 0 ? (
             <Card>
               <CardContent className="py-10">
                 <div className="text-center text-muted-foreground">
                   <DollarSign className="mx-auto h-12 w-12 opacity-50 mb-4" />
-                  <p>No hay clientes con saldo pendiente</p>
+                  <p>
+                    {searchTerm.trim()
+                      ? `No se encontraron clientes para "${searchTerm}"`
+                      : 'No hay clientes con saldo pendiente'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4">
-              {clientesConSaldo.map((cliente) => {
+              {clientesConSaldoFiltrados.map((cliente) => {
                 const items = getItemsPagoByClienteId(cliente.id);
                 const itemsPendientes = items.filter((i) => i.estado !== 'Pagado');
 
@@ -223,11 +279,25 @@ export default function PagosView() {
                             {cliente.telefono} {cliente.email && `• ${cliente.email}`}
                           </CardDescription>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Saldo Total</p>
-                          <p className="text-2xl font-bold text-destructive">
-                            ${Math.round(cliente.saldoPendiente).toLocaleString()}
-                          </p>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Saldo Total</p>
+                            <p className="text-2xl font-bold text-destructive">
+                              ${Math.round(cliente.saldoPendiente).toLocaleString()}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => handleCopiarEstadoCuenta(cliente, items)}
+                          >
+                            {copiedClienteId === cliente.id ? (
+                              <Check className="h-4 w-4 mr-1 text-green-600" />
+                            ) : (
+                              <Copy className="h-4 w-4 mr-1" />
+                            )}
+                            {copiedClienteId === cliente.id ? 'Copiado' : 'Copiar estado de cuenta'}
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>
@@ -350,7 +420,7 @@ export default function PagosView() {
                             <TableCell className="font-medium">
                               {getClienteNombre(item.clienteId)}
                             </TableCell>
-                            <TableCell>{item.descripcion}</TableCell>
+                            <TableCell className="font-medium max-w-45 truncate">{item.descripcion}</TableCell>
                             <TableCell>
                               {format(item.fecha, 'dd/MM/yyyy', { locale: es })}
                             </TableCell>

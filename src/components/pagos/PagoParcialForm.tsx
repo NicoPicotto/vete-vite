@@ -35,6 +35,7 @@ export function PagoParcialForm({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
   } = useForm<PagoParcialFormValues>({
     resolver: zodResolver(pagoParcialSchema),
   });
@@ -121,9 +122,18 @@ export function PagoParcialForm({
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {/* Monto del Pago */}
           <div className="space-y-2">
-            <Label htmlFor="monto">
-              Monto del Pago <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="monto">
+                Monto del Pago <span className="text-destructive">*</span>
+              </Label>
+              <button
+                type="button"
+                className="text-xs cursor-pointer text-primary underline-offset-2 hover:underline"
+                onClick={() => setValue('monto', saldoPendiente)}
+              >
+                Completar con saldo pendiente
+              </button>
+            </div>
             <Input
               id="monto"
               type="number"

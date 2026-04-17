@@ -7,17 +7,44 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Eye, Loader2, Search } from 'lucide-react';
+import { Plus, Eye, Loader2, Search, CreditCard } from 'lucide-react';
 import { useVentas } from '@/hooks/useVentas';
 import { useClientes } from '@/hooks/useClientes';
-import type { EstadoPago } from '@/lib/types';
+import { useItemsPago, useCreatePagoParcial } from '@/hooks/usePagos';
+import { PagoParcialForm } from '@/components/pagos/PagoParcialForm';
+import type { EstadoPago, ItemPago } from '@/lib/types';
+import type { PagoParcialFormValues } from '@/lib/schemas';
 
 export default function VentasView() {
   const { data: ventas = [], isLoading, error } = useVentas();
   const { data: clientes = [] } = useClientes();
+  const { data: itemsPago = [] } = useItemsPago();
+  const createPagoParcialMutation = useCreatePagoParcial();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchFecha, setSearchFecha] = useState('');
+  const [pagoFormOpen, setPagoFormOpen] = useState(false);
+  const [selectedItemPago, setSelectedItemPago] = useState<ItemPago | null>(null);
+
+  const handleRegistrarPago = (itemPagoId: string) => {
+    const item = itemsPago.find((i) => i.id === itemPagoId);
+    if (item) {
+      setSelectedItemPago(item);
+      setPagoFormOpen(true);
+    }
+  };
+
+  const handlePagoParcialSubmit = (data: PagoParcialFormValues) => {
+    if (selectedItemPago) {
+      createPagoParcialMutation.mutate({
+        itemPagoId: selectedItemPago.id,
+        monto: data.monto,
+        notas: data.notas,
+      });
+      setPagoFormOpen(false);
+      setSelectedItemPago(null);
+    }
+  };
 
   const getClienteNombre = (clienteId?: string) => {
     if (!clienteId) return 'Venta al Paso';
@@ -171,11 +198,23 @@ export default function VentasView() {
                         {venta.notas || '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link to={`/ventas/${venta.id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        <div className="flex justify-end gap-1">
+                          {venta.estadoPago !== 'Pagado' && venta.itemPagoId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRegistrarPago(venta.itemPagoId!)}
+                              title="Registrar pago"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Link to={`/ventas/${venta.id}`}>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -185,6 +224,12 @@ export default function VentasView() {
           )}
         </CardContent>
       </Card>
+      <PagoParcialForm
+        open={pagoFormOpen}
+        onOpenChange={setPagoFormOpen}
+        onSubmit={handlePagoParcialSubmit}
+        itemPago={selectedItemPago}
+      />
     </div>
   );
 }
