@@ -110,6 +110,7 @@ export type DesparasitacionFormValues = z.infer<typeof desparasitacionSchema>;
 
 export const historiaClinicaSchema = z.object({
   fecha: z.date(),
+  hora: z.string().min(1, 'Debes ingresar la hora de la consulta'),
   motivoConsulta: z
     .string()
     .min(3, 'El motivo debe tener al menos 3 caracteres'),

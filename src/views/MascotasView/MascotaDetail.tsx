@@ -372,7 +372,7 @@ export default function MascotaDetail() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Última consulta:</span>
                 <span className="font-medium text-sm">
-                  {format(historiaClinica[0].fecha, 'dd/MM/yyyy')}
+                  {format(historiaClinica[0].fecha, 'dd/MM/yyyy')} · {String(historiaClinica[0].fecha.getHours()).padStart(2, '0')}:{String(historiaClinica[0].fecha.getMinutes()).padStart(2, '0')}
                 </span>
               </div>
             )}
@@ -415,6 +415,8 @@ export default function MascotaDetail() {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span className="font-semibold">
                           {format(consulta.fecha, "d 'de' MMMM 'de' yyyy", { locale: es })}
+                          {' · '}
+                          {String(consulta.fecha.getHours()).padStart(2, '0')}:{String(consulta.fecha.getMinutes()).padStart(2, '0')}
                         </span>
                       </div>
                       {consulta.veterinario && (

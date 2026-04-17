@@ -69,8 +69,9 @@ export function HistoriaClinicaForm({
   const [recordatorioFecha, setRecordatorioFecha] = useState<Date>(new Date());
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
 
-  // Estado local para la fecha de la consulta (en formato YYYY-MM-DD para el input)
+  // Estado local para la fecha y hora de la consulta
   const [fechaConsulta, setFechaConsulta] = useState<string>('');
+  const [horaConsulta, setHoraConsulta] = useState<string>('');
 
   // Estado para el archivo adjunto
   const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
@@ -81,18 +82,16 @@ export function HistoriaClinicaForm({
     if (open) {
       if (editData) {
         // Modo editar - cargar datos existentes
-        // Extraer la fecha en formato ISO (YYYY-MM-DD)
-        const fechaString = typeof editData.fecha === 'string' ? editData.fecha : editData.fecha.toISOString();
-        const fechaISO = fechaString.split('T')[0]; // "2026-02-25"
+        const fechaDate = editData.fecha instanceof Date ? editData.fecha : new Date(editData.fecha);
+        const fechaISO = `${fechaDate.getFullYear()}-${String(fechaDate.getMonth() + 1).padStart(2, '0')}-${String(fechaDate.getDate()).padStart(2, '0')}`;
+        const horaISO = `${String(fechaDate.getHours()).padStart(2, '0')}:${String(fechaDate.getMinutes()).padStart(2, '0')}`;
 
-        // Setear la fecha en el estado local (formato YYYY-MM-DD para el input)
         setFechaConsulta(fechaISO);
-
-        const [year, month, day] = fechaISO.split('-').map(Number);
-        const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        setHoraConsulta(horaISO);
 
         reset({
-          fecha: fechaUTC,
+          fecha: fechaDate,
+          hora: horaISO,
           motivoConsulta: editData.motivoConsulta,
           peso: editData.peso,
           temperatura: editData.temperatura,
@@ -104,13 +103,16 @@ export function HistoriaClinicaForm({
         setArchivoExistente(editData.archivoAdjunto);
         setArchivoSeleccionado(null);
       } else {
-        // Modo crear - valores por defecto limpios (fecha de hoy)
-        const hoy = new Date();
-        const fechaISOHoy = hoy.toISOString().split('T')[0];
+        // Modo crear - fecha de hoy y hora actual
+        const ahora = new Date();
+        const fechaISOHoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+        const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
         setFechaConsulta(fechaISOHoy);
+        setHoraConsulta(horaActual);
 
         reset({
-          fecha: hoy,
+          fecha: ahora,
+          hora: horaActual,
           motivoConsulta: '',
           peso: undefined,
           temperatura: undefined,
@@ -227,29 +229,55 @@ export function HistoriaClinicaForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fecha">
-              Fecha de la Consulta <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="fecha"
-              type="date"
-              value={fechaConsulta}
-              onChange={(e) => {
-                const fechaStr = e.target.value; // "2026-02-25"
-                setFechaConsulta(fechaStr);
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fecha">
+                Fecha de la Consulta <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="fecha"
+                type="date"
+                value={fechaConsulta}
+                onChange={(e) => {
+                  const fechaStr = e.target.value;
+                  setFechaConsulta(fechaStr);
+                  if (fechaStr && horaConsulta) {
+                    const [year, month, day] = fechaStr.split('-').map(Number);
+                    const [hours, minutes] = horaConsulta.split(':').map(Number);
+                    const fechaLocal = new Date(year, month - 1, day, hours, minutes, 0);
+                    setValue('fecha', fechaLocal, { shouldValidate: true });
+                  }
+                }}
+              />
+              {errors.fecha && (
+                <p className="text-sm text-destructive">{errors.fecha.message}</p>
+              )}
+            </div>
 
-                // Convertir a Date y actualizar el formulario
-                if (fechaStr) {
-                  const [year, month, day] = fechaStr.split('-').map(Number);
-                  const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-                  setValue('fecha', fechaUTC, { shouldValidate: true });
-                }
-              }}
-            />
-            {errors.fecha && (
-              <p className="text-sm text-destructive">{errors.fecha.message}</p>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="hora">
+                Hora <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="hora"
+                type="time"
+                value={horaConsulta}
+                {...register('hora')}
+                onChange={(e) => {
+                  const horaStr = e.target.value;
+                  setHoraConsulta(horaStr);
+                  if (fechaConsulta && horaStr) {
+                    const [year, month, day] = fechaConsulta.split('-').map(Number);
+                    const [hours, minutes] = horaStr.split(':').map(Number);
+                    const fechaLocal = new Date(year, month - 1, day, hours, minutes, 0);
+                    setValue('fecha', fechaLocal, { shouldValidate: true });
+                  }
+                }}
+              />
+              {errors.hora && (
+                <p className="text-sm text-destructive">{errors.hora.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
