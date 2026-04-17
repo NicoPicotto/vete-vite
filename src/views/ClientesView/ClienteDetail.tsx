@@ -135,6 +135,8 @@ export default function ClienteDetail() {
    const [editingPago, setEditingPago] = useState<ItemPago | null>(null);
    const [selectedPagoForPayment, setSelectedPagoForPayment] =
       useState<ItemPago | null>(null);
+   const [isDeletePagoDialogOpen, setIsDeletePagoDialogOpen] = useState(false);
+   const [pagoToDelete, setPagoToDelete] = useState<ItemPago | null>(null);
 
    // Estados para recordatorios
    const [isRecordatorioFormOpen, setIsRecordatorioFormOpen] = useState(false);
@@ -220,9 +222,16 @@ export default function ClienteDetail() {
       setIsPagoFormOpen(true);
    };
 
-   const handleDeletePago = (pagoId: string, descripcion: string) => {
-      if (confirm(`¿Estás seguro de eliminar el pago "${descripcion}"?`)) {
-         deleteItemPagoMutation.mutate(pagoId);
+   const handleDeletePago = (pago: ItemPago) => {
+      setPagoToDelete(pago);
+      setIsDeletePagoDialogOpen(true);
+   };
+
+   const handleDeletePagoConfirm = () => {
+      if (pagoToDelete) {
+         deleteItemPagoMutation.mutate(pagoToDelete.id);
+         setPagoToDelete(null);
+         setIsDeletePagoDialogOpen(false);
       }
    };
 
@@ -674,12 +683,7 @@ export default function ClienteDetail() {
                                        <Button
                                           variant='ghost'
                                           size='sm'
-                                          onClick={() =>
-                                             handleDeletePago(
-                                                item.id,
-                                                item.descripcion,
-                                             )
-                                          }
+                                          onClick={() => handleDeletePago(item)}
                                           title='Eliminar'
                                        >
                                           <Trash2 className='h-4 w-4 text-destructive' />
@@ -1040,6 +1044,27 @@ export default function ClienteDetail() {
             readonlyCliente={true}
             isSubmitting={createVentaMutation.isPending}
          />
+
+         {/* Diálogo de Confirmación de Eliminación - Pago */}
+         <AlertDialog
+            open={isDeletePagoDialogOpen}
+            onOpenChange={setIsDeletePagoDialogOpen}
+         >
+            <AlertDialogContent>
+               <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                     Esta acción eliminará el item de pago "{pagoToDelete?.descripcion}".
+                  </AlertDialogDescription>
+               </AlertDialogHeader>
+               <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeletePagoConfirm}>
+                     Eliminar
+                  </AlertDialogAction>
+               </AlertDialogFooter>
+            </AlertDialogContent>
+         </AlertDialog>
 
          {/* Diálogo de Confirmación de Eliminación */}
          <AlertDialog
