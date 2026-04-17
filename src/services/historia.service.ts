@@ -2,10 +2,11 @@ import { supabase } from '@/lib/supabase';
 import type { HistoriaClinica, HistoriaClinicaFormData, ArchivoAdjunto } from '@/lib/types';
 
 // Tipo para la tabla de Supabase (snake_case)
+// fecha es TIMESTAMPTZ desde la migración (antes era DATE)
 interface HistoriaClinicaDB {
   id: string;
   mascota_id: string;
-  fecha: string;
+  fecha: string; // ISO 8601 con timezone
   motivo_consulta: string;
   peso: number | null;
   temperatura: number | null;
@@ -33,6 +34,7 @@ const dbToHistoriaClinica = (db: HistoriaClinicaDB): HistoriaClinica => ({
 });
 
 // Convertir de TS (camelCase) a DB (snake_case)
+// fecha ya contiene la hora local construida en el formulario — toISOString() la convierte a UTC correctamente
 const historiaClinicaToDb = (historia: HistoriaClinicaFormData & { fecha?: Date }) => ({
   mascota_id: historia.mascotaId,
   fecha: historia.fecha ? historia.fecha.toISOString() : new Date().toISOString(),
