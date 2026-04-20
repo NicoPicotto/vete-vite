@@ -288,6 +288,7 @@ export const ventaSchema = z.object({
     .array(ventaItemInputSchema)
     .min(1, 'Debes agregar al menos un producto a la venta'),
   pagoCompleto: z.boolean().optional(), // Si está marcado, se paga el 100% al crear
+  descuento: z.number().min(0).optional(), // Monto de descuento calculado
 });
 
 export type VentaFormValues = z.infer<typeof ventaSchema>;

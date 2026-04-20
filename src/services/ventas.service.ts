@@ -7,6 +7,7 @@ interface VentaDB {
   cliente_id: string | null; // Puede ser null para ventas al paso
   fecha: string;
   total: number;
+  descuento: number;
   metodo_pago: 'Contado' | 'Débito' | 'Crédito';
   estado_pago: 'Pendiente' | 'Pagado Parcial' | 'Pagado';
   notas: string | null;
@@ -46,6 +47,7 @@ const dbToVenta = (db: VentaDB, items?: VentaItemDB[]): Venta => ({
   clienteId: db.cliente_id || undefined, // Convertir null a undefined
   fecha: new Date(db.fecha),
   total: db.total,
+  descuento: db.descuento,
   metodoPago: db.metodo_pago,
   estadoPago: db.estado_pago,
   notas: db.notas || undefined,
@@ -131,6 +133,16 @@ export const getVentaById = async (id: string): Promise<Venta> => {
 };
 
 /**
+ * Calcular monto de descuento según tipo y valor
+ * Exportada para uso en UI (mostrar descuento en tiempo real)
+ */
+export const calcularDescuento = (subtotal: number, tipo: '$' | '%', valor: number): number => {
+  if (valor <= 0) return 0;
+  if (tipo === '%') return Math.round(subtotal * (valor / 100));
+  return Math.round(valor);
+};
+
+/**
  * Calcular recargo según método de pago
  * Exportada para uso en UI (mostrar recargo en tiempo real)
  */
@@ -152,14 +164,17 @@ export const calcularRecargo = (subtotal: number, metodoPago: 'Contado' | 'Débi
  * También genera automáticamente un ItemPago asociado (solo si hay cliente)
  */
 export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => {
-  // 1. Calcular subtotal (suma de productos sin recargo)
+  // 1. Calcular subtotal (suma de productos sin recargo ni descuento)
   const subtotal = ventaData.items.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
 
   // 2. Calcular recargo según método de pago
   const recargo = calcularRecargo(subtotal, ventaData.metodoPago);
 
-  // 3. Calcular total final (subtotal + recargo)
-  const total = subtotal + recargo;
+  // 3. Aplicar descuento (ya viene calculado desde el formulario)
+  const descuento = ventaData.descuento ?? 0;
+
+  // 4. Calcular total final (subtotal + recargo - descuento)
+  const total = subtotal + recargo - descuento;
 
   // 4. Crear la venta
   // Si es venta al paso (sin cliente) y se pagó completo, el estado es 'Pagado', sino 'Pendiente'
@@ -172,6 +187,7 @@ export const createVenta = async (ventaData: VentaFormInput): Promise<Venta> => 
       cliente_id: ventaData.clienteId || null,
       fecha: ventaData.fecha.toISOString(),
       total,
+      descuento,
       metodo_pago: ventaData.metodoPago,
       estado_pago: estadoInicial,
       notas: ventaData.notas || null,

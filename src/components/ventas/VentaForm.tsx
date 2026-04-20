@@ -48,7 +48,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, ShoppingCart, UserPlus, PenLine } from "lucide-react";
 import { useClientes, useCreateCliente } from "@/hooks/useClientes";
 import { useProductos } from "@/hooks/useProductos";
-import { calcularRecargo } from "@/services/ventas.service";
+import { calcularRecargo, calcularDescuento } from "@/services/ventas.service";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 
 interface CartItem {
@@ -94,6 +94,12 @@ export function VentaForm({
    const [cart, setCart] = useState<CartItem[]>([]);
    const [selectedProductoId, setSelectedProductoId] = useState("");
    const [cantidadStr, setCantidadStr] = useState("1");
+   const [productoComboOpen, setProductoComboOpen] = useState(false);
+
+   // Estado del descuento
+   const [aplicarDescuento, setAplicarDescuento] = useState(false);
+   const [descuentoTipo, setDescuentoTipo] = useState<"$" | "%">("%");
+   const [descuentoValor, setDescuentoValor] = useState(0);
 
    // Estado del dialog de ítem personalizado
    const [itemPersonalizadoOpen, setItemPersonalizadoOpen] = useState(false);
@@ -255,8 +261,13 @@ export function VentaForm({
    // Calcular recargo según método de pago
    const recargo = calcularRecargo(subtotal, metodoPago);
 
-   // Calcular total final (subtotal + recargo)
-   const total = subtotal + recargo;
+   // Calcular descuento en tiempo real
+   const descuentoCalculado = aplicarDescuento
+      ? calcularDescuento(subtotal, descuentoTipo, descuentoValor)
+      : 0;
+
+   // Calcular total final (subtotal + recargo - descuento)
+   const total = subtotal + recargo - descuentoCalculado;
 
    // Crear cliente rápido desde la venta y auto-seleccionarlo
    const handleCrearCliente = (
@@ -293,7 +304,7 @@ export function VentaForm({
          }
       });
 
-      onSubmit({ ...data, items });
+      onSubmit({ ...data, items, descuento: descuentoCalculado });
    };
 
    return (
@@ -453,6 +464,65 @@ export function VentaForm({
                      </div>
                   </div>
 
+                  {/* Descuento */}
+                  <div className='space-y-3'>
+                     <div className='flex items-center space-x-2'>
+                        <Checkbox
+                           id='aplicarDescuento'
+                           checked={aplicarDescuento}
+                           onCheckedChange={(checked) => {
+                              setAplicarDescuento(checked as boolean);
+                              if (!checked) setDescuentoValor(0);
+                           }}
+                        />
+                        <Label
+                           htmlFor='aplicarDescuento'
+                           className='cursor-pointer font-medium'
+                        >
+                           Aplicar descuento
+                        </Label>
+                     </div>
+                     {aplicarDescuento && (
+                        <div className='flex items-center gap-3'>
+                           <Select
+                              value={descuentoTipo}
+                              onValueChange={(v) =>
+                                 setDescuentoTipo(v as "$" | "%")
+                              }
+                           >
+                              <SelectTrigger className='w-[35%]'>
+                                 <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                 <SelectItem value='%'>% Porcentaje</SelectItem>
+                                 <SelectItem value='$'>$ Monto fijo</SelectItem>
+                              </SelectContent>
+                           </Select>
+                           <Input
+                              type='number'
+                              min='0'
+                              max={descuentoTipo === "%" ? "100" : undefined}
+                              step='any'
+                              value={descuentoValor || ""}
+                              onChange={(e) =>
+                                 setDescuentoValor(
+                                    parseFloat(e.target.value) || 0,
+                                 )
+                              }
+                              placeholder={
+                                 descuentoTipo === "%" ? "Ej: 10" : "Ej: 500"
+                              }
+                              className='w-[13%]'
+                           />
+                           {descuentoTipo === "%" && descuentoValor > 0 && (
+                              <span className='text-sm text-muted-foreground'>
+                                 = ${descuentoCalculado}
+                              </span>
+                           )}
+                        </div>
+                     )}
+                  </div>
+
                   <div className='space-y-2'>
                      <Label htmlFor='notas'>Notas (opcional)</Label>
                      <Textarea
@@ -496,8 +566,19 @@ export function VentaForm({
                                  selectedProducto?.id || "",
                               );
                            }}
+                           onOpenChange={setProductoComboOpen}
                         >
-                           <ComboboxInput placeholder='Buscar producto...' />
+                           <ComboboxInput
+                              placeholder='Buscar producto...'
+                              onKeyDown={(e) => {
+                                 if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    if (!productoComboOpen && selectedProductoId) {
+                                       handleAddToCart();
+                                    }
+                                 }
+                              }}
+                           />
                            <ComboboxContent>
                               <ComboboxEmpty>
                                  No se encontró ningún producto.
@@ -525,6 +606,12 @@ export function VentaForm({
                            step='any'
                            value={cantidadStr}
                            onChange={(e) => setCantidadStr(e.target.value)}
+                           onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                 e.preventDefault();
+                                 handleAddToCart();
+                              }
+                           }}
                         />
                      </div>
 
@@ -659,6 +746,26 @@ export function VentaForm({
                                     <TableCell />
                                  </TableRow>
                               )}
+                              {/* Descuento (solo si aplica) */}
+                              {descuentoCalculado > 0 && (
+                                 <TableRow>
+                                    <TableCell
+                                       colSpan={4}
+                                       className='text-right text-emerald-700 font-medium'
+                                    >
+                                       Descuento
+                                       {descuentoTipo === "%"
+                                          ? ` (-${descuentoValor}%)`
+                                          : ""}
+                                       :
+                                    </TableCell>
+                                    <TableCell className='text-right text-emerald-700 font-medium'>
+                                       -${descuentoCalculado}
+                                    </TableCell>
+                                    <TableCell />
+                                 </TableRow>
+                              )}
+
                               {/* Total Final */}
                               <TableRow className='bg-muted/50'>
                                  <TableCell

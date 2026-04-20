@@ -135,6 +135,12 @@ export default function VentaDetail() {
               <p className="text-sm text-muted-foreground">Total</p>
               <p className="text-2xl font-bold">${venta.total}</p>
             </div>
+            {venta.descuento > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground">Descuento aplicado</p>
+                <p className="font-medium text-emerald-700">-${venta.descuento}</p>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground">Método de Pago</p>
               <p className="font-medium">
@@ -241,6 +247,16 @@ export default function VentaDetail() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {venta.descuento > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-right text-emerald-700 font-medium">
+                        Descuento:
+                      </TableCell>
+                      <TableCell className="text-right text-emerald-700 font-medium">
+                        -${venta.descuento}
+                      </TableCell>
+                    </TableRow>
+                  )}
                   <TableRow>
                     <TableCell colSpan={3} className="text-right font-bold">
                       TOTAL:

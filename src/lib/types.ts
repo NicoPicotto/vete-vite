@@ -224,7 +224,8 @@ export interface Venta {
   id: string;
   clienteId?: string; // Opcional para ventas al paso
   fecha: Date;
-  total: number; // Total FINAL con recargo incluido (si aplica)
+  total: number; // Total FINAL con recargo incluido y descuento aplicado
+  descuento: number; // Monto de descuento aplicado (0 si no hay)
   metodoPago: MetodoPago; // Método de pago: Contado (sin recargo), Débito (+5%), Crédito (+20%)
   estadoPago: EstadoPago;
   notas?: string;
@@ -250,6 +251,7 @@ export interface VentaFormInput {
   notas?: string;
   items: VentaItemInput[];
   pagoCompleto?: boolean; // Si está marcado, se registra como pagado al 100%
+  descuento?: number; // Monto de descuento ya calculado (0 si no aplica)
 }
 
 // ============================================
