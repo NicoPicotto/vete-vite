@@ -12,6 +12,7 @@ import ProductosView from '@/views/ProductosView';
 import VentasView from '@/views/VentasView';
 import NuevaVenta from '@/views/VentasView/NuevaVenta';
 import VentaDetail from '@/views/VentasView/VentaDetail';
+import MensajesRapidosView from '@/views/MensajesRapidosView';
 
 export const router = createBrowserRouter([
   {
@@ -65,6 +66,10 @@ export const router = createBrowserRouter([
       {
         path: 'ventas/:id',
         element: <VentaDetail />,
+      },
+      {
+        path: 'mensajes-rapidos',
+        element: <MensajesRapidosView />,
       },
     ],
   },

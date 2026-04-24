@@ -185,7 +185,7 @@ export default function PagosView() {
       })
       .join('\n\n');
 
-    const texto = `*Estado de Cuenta — ${cliente.nombre} ${cliente.apellido}*\n📅 ${hoy}\n\n${lineasItems}\n\n━━━━━━━━━━━━━━━\n💰 *TOTAL ADEUDADO: $${Math.round(cliente.saldoPendiente).toLocaleString()}*`;
+    const texto = `*Estado de Cuenta — ${cliente.nombre} ${cliente.apellido}*\n📅 ${hoy}\n\n${lineasItems}\n\n━━━━━━━━━━━━━━━\n💰 *TOTAL ADEUDADO: $${Math.round(cliente.saldoPendiente).toLocaleString()}*\n\nSi quisieras transferir te facilito el alias: clinicaparamascotas2 a nombre de Florencia Ciravegna (Naranja X)`;
 
     navigator.clipboard.writeText(texto).then(() => {
       setCopiedClienteId(cliente.id);

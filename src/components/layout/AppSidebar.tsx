@@ -8,6 +8,7 @@ import {
    Package,
    ShoppingCart,
    CalendarClock,
+   MessageSquare,
 } from "lucide-react";
 import {
    Sidebar,
@@ -43,6 +44,7 @@ const navigation: NavItem[] = [
    { title: "Pagos", href: "/pagos", icon: CreditCard },
    { title: "Turnos", href: "/turnos", icon: CalendarClock },
    { title: "Recordatorios", href: "/recordatorios", icon: Bell },
+   { title: "Mensajes Rápidos", href: "/mensajes-rapidos", icon: MessageSquare },
 ];
 
 export function AppSidebar() {
