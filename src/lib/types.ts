@@ -279,6 +279,19 @@ export interface Turno {
 export type TurnoFormData = Omit<Turno, 'id' | 'clienteNombre' | 'clienteApellido' | 'clienteTelefono' | 'mascotaNombre' | 'mascotaEspecie'>;
 
 // ============================================
+// MENSAJE RÁPIDO
+// ============================================
+export interface MensajeRapido {
+  id: string;
+  titulo: string;
+  contenido: string;
+  fechaCreacion: Date;
+  fechaActualizacion: Date;
+}
+
+export type MensajeRapidoFormData = Pick<MensajeRapido, 'titulo' | 'contenido'>;
+
+// ============================================
 // UTILIDADES
 // ============================================
 export interface SelectOption {

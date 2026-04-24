@@ -312,3 +312,20 @@ export const turnoSchema = z.object({
 });
 
 export type TurnoFormValues = z.infer<typeof turnoSchema>;
+
+// ============================================
+// MENSAJE RÁPIDO SCHEMA
+// ============================================
+
+export const mensajeRapidoSchema = z.object({
+  titulo: z
+    .string()
+    .min(1, 'El título es requerido')
+    .max(100, 'El título no puede exceder 100 caracteres'),
+  contenido: z
+    .string()
+    .min(1, 'El contenido es requerido')
+    .max(2000, 'El contenido no puede exceder 2000 caracteres'),
+});
+
+export type MensajeRapidoFormValues = z.infer<typeof mensajeRapidoSchema>;
