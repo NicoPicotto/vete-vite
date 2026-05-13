@@ -77,10 +77,9 @@ export default function TurnosView() {
   }, [turnos]);
 
   const todosTurnos = useMemo(() => {
-    const hoy = startOfDay(new Date());
-    return turnos
-      .filter((t) => new Date(t.fechaHora) >= hoy)
-      .sort((a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime());
+    return [...turnos].sort(
+      (a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime()
+    );
   }, [turnos]);
 
   // ============================================
