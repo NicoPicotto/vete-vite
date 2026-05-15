@@ -498,8 +498,11 @@ export function HistoriaClinicaForm({
                     <Input
                       id="recordatorioFecha"
                       type="date"
-                      value={recordatorioFecha.toISOString().split('T')[0]}
-                      onChange={(e) => setRecordatorioFecha(new Date(e.target.value))}
+                      value={`${recordatorioFecha.getFullYear()}-${String(recordatorioFecha.getMonth() + 1).padStart(2, '0')}-${String(recordatorioFecha.getDate()).padStart(2, '0')}`}
+                      onChange={(e) => {
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        setRecordatorioFecha(new Date(year, month - 1, day));
+                      }}
                       disabled={!crearRecordatorio}
                     />
                     {fechaSeleccionada && crearRecordatorio && (
