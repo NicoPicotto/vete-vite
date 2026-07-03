@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import LoginView from '@/views/LoginView';
 import DashboardView from '@/views/DashboardView';
 import ClientesView from '@/views/ClientesView';
 import ClienteDetail from '@/views/ClientesView/ClienteDetail';
@@ -15,6 +16,10 @@ import VentaDetail from '@/views/VentasView/VentaDetail';
 import MensajesRapidosView from '@/views/MensajesRapidosView';
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginView />,
+  },
   {
     path: '/',
     element: <AppLayout />,

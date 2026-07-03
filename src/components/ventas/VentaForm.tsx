@@ -444,24 +444,6 @@ export function VentaForm({
                         )}
                      </div>
 
-                     {/* Pago Completo */}
-                     <div className='flex space-x-2 h-fit self-end p-2 mb-1'>
-                        <Checkbox
-                           id='pagoCompleto'
-                           checked={pagoCompleto}
-                           onCheckedChange={(checked) =>
-                              setValue("pagoCompleto", checked as boolean)
-                           }
-                        />
-                        <div className='h-fit'>
-                           <Label
-                              htmlFor='pagoCompleto'
-                              className='cursor-pointer font-medium'
-                           >
-                              El cliente pagó el total en este momento
-                           </Label>
-                        </div>
-                     </div>
                   </div>
 
                   {/* Descuento */}
@@ -786,23 +768,37 @@ export function VentaForm({
                </CardContent>
             </Card>
 
-            <div className='flex justify-end gap-4'>
-               {showCancelButton && (
+            <div className='flex justify-end items-center gap-4'>
+               <div className='flex items-center space-x-2'>
+                  <Checkbox
+                     id='pagoCompleto'
+                     checked={pagoCompleto}
+                     onCheckedChange={(checked) =>
+                        setValue("pagoCompleto", checked as boolean)
+                     }
+                  />
+                  <Label htmlFor='pagoCompleto' className='cursor-pointer font-medium'>
+                     El cliente pagó el total en este momento
+                  </Label>
+               </div>
+               <div className='flex gap-4'>
+                  {showCancelButton && (
+                     <Button
+                        type='button'
+                        variant='outline'
+                        onClick={onCancel || (() => window.history.back())}
+                        disabled={isSubmitting}
+                     >
+                        Cancelar
+                     </Button>
+                  )}
                   <Button
-                     type='button'
-                     variant='outline'
-                     onClick={onCancel || (() => window.history.back())}
-                     disabled={isSubmitting}
+                     type='submit'
+                     disabled={isSubmitting || cart.length === 0}
                   >
-                     Cancelar
+                     {isSubmitting ? "Guardando..." : "Registrar Venta"}
                   </Button>
-               )}
-               <Button
-                  type='submit'
-                  disabled={isSubmitting || cart.length === 0}
-               >
-                  {isSubmitting ? "Guardando..." : "Registrar Venta"}
-               </Button>
+               </div>
             </div>
 
             <ClienteForm
