@@ -75,6 +75,8 @@ export default function ClientesView() {
          (c) =>
             c.nombre.toLowerCase().includes(term) ||
             c.apellido.toLowerCase().includes(term) ||
+            `${c.nombre} ${c.apellido}`.toLowerCase().includes(term) ||
+            `${c.apellido} ${c.nombre}`.toLowerCase().includes(term) ||
             c.telefono.includes(term),
       );
    }, [clientes, searchTerm]);

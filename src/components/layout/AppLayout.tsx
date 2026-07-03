@@ -1,8 +1,24 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/AuthContext';
+import { PawPrint } from 'lucide-react';
 
 export default function AppLayout() {
+  const { session, loading, passwordRecovery } = useAuth();
+
+  if (loading) {
+    return (
+      <div className='min-h-screen flex flex-col items-center justify-center gap-3 text-muted-foreground'>
+        <PawPrint className='h-8 w-8 animate-pulse text-primary' />
+      </div>
+    );
+  }
+
+  if (!session || passwordRecovery) {
+    return <Navigate to='/login' replace />;
+  }
+
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">

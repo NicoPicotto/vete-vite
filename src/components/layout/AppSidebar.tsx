@@ -9,6 +9,7 @@ import {
    ShoppingCart,
    CalendarClock,
    MessageSquare,
+   LogOut,
 } from "lucide-react";
 import {
    Sidebar,
@@ -23,6 +24,7 @@ import {
    SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useNeko } from "@/hooks/useNeko";
+import { useAuth } from "@/contexts/AuthContext";
 import {
    Tooltip,
    TooltipContent,
@@ -50,6 +52,7 @@ const navigation: NavItem[] = [
 export function AppSidebar() {
    const location = useLocation();
    const { isActive, toggle } = useNeko();
+   const { signOut } = useAuth();
 
    return (
       <Sidebar>
@@ -94,7 +97,6 @@ export function AppSidebar() {
                   >
                      <span className='text-base leading-none'>{isActive ? "🐱" : "😺"}</span>
                      <span>{isActive ? "Despedir a Gina" : "Llamar a Gina"}</span>
-                     
                   </button>
                </TooltipTrigger>
                <TooltipContent side='top' className='max-w-52 text-center'>
@@ -103,6 +105,13 @@ export function AppSidebar() {
                      : "¡Llamá a Gina para que aparezca en pantalla!"}
                </TooltipContent>
             </Tooltip>
+            <button
+               onClick={() => signOut()}
+               className='flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+            >
+               <LogOut className='h-4 w-4' />
+               <span>Cerrar sesión</span>
+            </button>
          </SidebarFooter>
       </Sidebar>
    );
