@@ -218,7 +218,10 @@ export function HistoriaClinicaForm({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{editData ? 'Editar Consulta' : 'Nueva Consulta'}</DialogTitle>
           <DialogDescription>
