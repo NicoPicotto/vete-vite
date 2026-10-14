@@ -31,6 +31,7 @@ import {
 import { PagoItemForm } from '@/components/pagos/PagoItemForm';
 import { PagoParcialForm } from '@/components/pagos/PagoParcialForm';
 import type { ItemPago } from '@/lib/types';
+import { generarTextoEstadoCuenta } from '@/lib/estadoCuenta';
 import type { PagoParcialFormValues } from '@/lib/schemas';
 import { DollarSign, Pencil, Trash2, CreditCard, User, Loader2, Copy, Check, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -174,18 +175,7 @@ export default function PagosView() {
     items: ItemPago[]
   ) => {
     const itemsPendientes = items.filter((i) => i.estado !== 'Pagado');
-    const hoy = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
-
-    const lineasItems = itemsPendientes
-      .map((item) => {
-        const pendiente = item.monto - item.montoPagado;
-        const fecha = format(item.fecha, 'dd/MM/yyyy', { locale: es });
-        const pagado = item.montoPagado > 0 ? `\n   ✅ Pagado: $${Math.round(item.montoPagado).toLocaleString()}` : '';
-        return `• ${item.descripcion}\n   📅 Fecha: ${fecha} | Total: $${Math.round(item.monto).toLocaleString()}${pagado}\n   ⏳ Pendiente: $${Math.round(pendiente).toLocaleString()}`;
-      })
-      .join('\n\n');
-
-    const texto = `*Estado de Cuenta — ${cliente.nombre} ${cliente.apellido}*\n📅 ${hoy}\n\n${lineasItems}\n\n━━━━━━━━━━━━━━━\n💰 *TOTAL ADEUDADO: $${Math.round(cliente.saldoPendiente).toLocaleString()}*\n\nSi quisieras transferir te facilito el alias: clinicaparamascotas2 a nombre de Florencia Ciravegna (Naranja X)`;
+    const texto = generarTextoEstadoCuenta(cliente, itemsPendientes);
 
     navigator.clipboard.writeText(texto).then(() => {
       setCopiedClienteId(cliente.id);
