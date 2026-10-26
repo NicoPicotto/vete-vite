@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { vacunacionSchema, type VacunacionFormValues } from '@/lib/schemas';
 import type { Vacunacion } from '@/lib/types';
+import { fechaToInput, parseFechaDB } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,26 +52,22 @@ export function VacunacionForm({
     if (open) {
       if (editData) {
         // Modo editar - cargar datos existentes
-        const fechaString = typeof editData.fecha === 'string' ? editData.fecha : editData.fecha.toISOString();
-        const fechaISO = fechaString.split('T')[0];
+        const fechaISO = fechaToInput(new Date(editData.fecha));
         setFechaVacuna(fechaISO);
 
-        const [year, month, day] = fechaISO.split('-').map(Number);
-        const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-
         reset({
-          fecha: fechaUTC,
+          fecha: parseFechaDB(fechaISO),
           tipoVacuna: editData.tipoVacuna,
           notas: editData.notas || '',
         });
       } else {
         // Modo crear - valores por defecto (fecha de hoy)
         const hoy = new Date();
-        const fechaISOHoy = hoy.toISOString().split('T')[0];
+        const fechaISOHoy = fechaToInput(hoy);
         setFechaVacuna(fechaISOHoy);
 
         reset({
-          fecha: hoy,
+          fecha: parseFechaDB(fechaISOHoy),
           tipoVacuna: '',
           notas: '',
         });
@@ -120,9 +117,7 @@ export function VacunacionForm({
                 setFechaVacuna(fechaStr);
 
                 if (fechaStr) {
-                  const [year, month, day] = fechaStr.split('-').map(Number);
-                  const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-                  setValue('fecha', fechaUTC, { shouldValidate: true });
+                  setValue('fecha', parseFechaDB(fechaStr), { shouldValidate: true });
                 }
               }}
             />

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { mascotaSchema, type MascotaFormValues } from "@/lib/schemas";
 import type { Mascota } from "@/lib/types";
-import { calcularEdad } from "@/lib/utils";
+import { calcularEdad, fechaToInput, parseFechaDB } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
    Dialog,
@@ -79,7 +79,7 @@ export function MascotaForm({
    const fechaNacimiento = watch("fechaNacimiento");
 
    const formatDateForInput = (date?: Date) =>
-      date ? date.toISOString().split("T")[0] : "";
+      date ? fechaToInput(new Date(date)) : "";
 
    const [fechaNacimientoStr, setFechaNacimientoStr] = useState(
       formatDateForInput(initialData?.fechaNacimiento),
@@ -247,8 +247,7 @@ export function MascotaForm({
                            const fechaStr = e.target.value;
                            setFechaNacimientoStr(fechaStr);
                            if (fechaStr) {
-                              const [year, month, day] = fechaStr.split("-").map(Number);
-                              setValue("fechaNacimiento", new Date(Date.UTC(year, month - 1, day, 12, 0, 0)), { shouldValidate: true });
+                              setValue("fechaNacimiento", parseFechaDB(fechaStr), { shouldValidate: true });
                            } else {
                               setValue("fechaNacimiento", undefined);
                            }

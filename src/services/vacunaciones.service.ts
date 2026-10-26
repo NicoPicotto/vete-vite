@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { fechaToInput, parseFechaDB } from '@/lib/utils';
 import type { Vacunacion, VacunacionFormData } from '@/lib/types';
 
 // Tipo para la tabla de Supabase (snake_case)
@@ -16,7 +17,7 @@ interface VacunacionDB {
 const dbToVacunacion = (db: VacunacionDB): Vacunacion => ({
   id: db.id,
   mascotaId: db.mascota_id,
-  fecha: new Date(db.fecha),
+  fecha: parseFechaDB(db.fecha),
   tipoVacuna: db.tipo_vacuna,
   notas: db.notas || undefined,
 });
@@ -24,7 +25,7 @@ const dbToVacunacion = (db: VacunacionDB): Vacunacion => ({
 // Convertir de TS (camelCase) a DB (snake_case)
 const vacunacionToDb = (vacunacion: VacunacionFormData) => ({
   mascota_id: vacunacion.mascotaId,
-  fecha: vacunacion.fecha.toISOString().split('T')[0], // Solo fecha YYYY-MM-DD
+  fecha: fechaToInput(vacunacion.fecha), // Solo fecha YYYY-MM-DD (día local)
   tipo_vacuna: vacunacion.tipoVacuna,
   notas: vacunacion.notas || null,
 });

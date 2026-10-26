@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { fechaToInput, parseFechaDB } from '@/lib/utils';
 import type { Desparasitacion, DesparasitacionFormData } from '@/lib/types';
 
 // Tipo para la tabla de Supabase (snake_case)
@@ -16,7 +17,7 @@ interface DesparasitacionDB {
 const dbToDesparasitacion = (db: DesparasitacionDB): Desparasitacion => ({
   id: db.id,
   mascotaId: db.mascota_id,
-  fecha: new Date(db.fecha),
+  fecha: parseFechaDB(db.fecha),
   tipoDesparasitacion: db.tipo_desparasitacion,
   notas: db.notas || undefined,
 });
@@ -24,7 +25,7 @@ const dbToDesparasitacion = (db: DesparasitacionDB): Desparasitacion => ({
 // Convertir de TS (camelCase) a DB (snake_case)
 const desparasitacionToDb = (desparasitacion: DesparasitacionFormData) => ({
   mascota_id: desparasitacion.mascotaId,
-  fecha: desparasitacion.fecha.toISOString().split('T')[0], // Solo fecha YYYY-MM-DD
+  fecha: fechaToInput(desparasitacion.fecha), // Solo fecha YYYY-MM-DD (día local)
   tipo_desparasitacion: desparasitacion.tipoDesparasitacion,
   notas: desparasitacion.notas || null,
 });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { recordatorioSchema, type RecordatorioFormValues } from '@/lib/schemas';
+import { fechaToInput } from '@/lib/utils';
 import { useMascotasByCliente } from '@/hooks/useMascotas';
 import { useCreateRecordatorio } from '@/hooks/useRecordatorios';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,7 @@ export function RecordatorioForm({
     if (open) {
       // Inicializar con fecha de hoy
       const hoy = new Date();
-      const fechaISOHoy = hoy.toISOString().split('T')[0];
+      const fechaISOHoy = fechaToInput(hoy);
       setFechaInput(fechaISOHoy);
 
       reset({
@@ -98,7 +99,7 @@ export function RecordatorioForm({
     nuevaFecha.setMonth(nuevaFecha.getMonth() + meses);
 
     // Actualizar el input HTML (formato YYYY-MM-DD)
-    const fechaISO = nuevaFecha.toISOString().split('T')[0];
+    const fechaISO = fechaToInput(nuevaFecha);
     setFechaInput(fechaISO);
 
     // Actualizar React Hook Form con Date UTC (mediodía para evitar problemas de timezone)

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { fechaToInput, parseFechaDB } from '@/lib/utils';
 import type { Mascota, MascotaFormData } from '@/lib/types';
 
 // Tipo para la tabla de Supabase (snake_case)
@@ -23,7 +24,7 @@ const dbToMascota = (db: MascotaDB): Mascota => ({
   nombre: db.nombre,
   especie: db.especie as Mascota['especie'],
   raza: db.raza,
-  fechaNacimiento: db.fecha_nacimiento ? new Date(db.fecha_nacimiento) : undefined,
+  fechaNacimiento: db.fecha_nacimiento ? parseFechaDB(db.fecha_nacimiento) : undefined,
   sexo: db.sexo as Mascota['sexo'],
   estado: db.estado as Mascota['estado'],
   otrasCaracteristicas: db.otras_caracteristicas || undefined,
@@ -35,7 +36,7 @@ const mascotaToDb = (mascota: MascotaFormData) => ({
   nombre: mascota.nombre,
   especie: mascota.especie,
   raza: mascota.raza,
-  fecha_nacimiento: mascota.fechaNacimiento?.toISOString().split('T')[0] || null,
+  fecha_nacimiento: mascota.fechaNacimiento ? fechaToInput(mascota.fechaNacimiento) : null,
   sexo: mascota.sexo,
   estado: mascota.estado,
   otras_caracteristicas: mascota.otrasCaracteristicas || null,

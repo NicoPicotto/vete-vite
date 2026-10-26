@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { addMonths, addYears } from 'date-fns';
+import { fechaToInput, parseFechaDB } from '@/lib/utils';
 
 export interface RecordatorioData {
   titulo: string;
@@ -124,13 +125,11 @@ export function RecordatorioSection({
             <Input
               id="recordatorio-fecha"
               type="date"
-              value={fecha.toISOString().split('T')[0]}
+              value={fechaToInput(fecha)}
               onChange={(e) => {
                 const fechaStr = e.target.value;
                 if (fechaStr) {
-                  const [year, month, day] = fechaStr.split('-').map(Number);
-                  const fechaUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-                  handleFechaChange(fechaUTC);
+                  handleFechaChange(parseFechaDB(fechaStr));
                 }
               }}
               disabled={!crearRecordatorio}

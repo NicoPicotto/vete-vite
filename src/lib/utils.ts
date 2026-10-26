@@ -22,3 +22,23 @@ export function calcularEdad(fechaNacimiento: Date): string {
   const dias = differenceInDays(hoy, fechaNacimiento)
   return `${dias} día${dias !== 1 ? 's' : ''}`
 }
+
+/**
+ * Fecha → "YYYY-MM-DD" usando el día local (para inputs type="date" y columnas DATE).
+ * No usar toISOString(): en Argentina (UTC-3) después de las 21:00 devuelve el día siguiente.
+ */
+export function fechaToInput(fecha: Date): string {
+  const y = fecha.getFullYear()
+  const m = String(fecha.getMonth() + 1).padStart(2, '0')
+  const d = String(fecha.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * "YYYY-MM-DD" (columna DATE o input type="date") → Date al mediodía local.
+ * No usar new Date("YYYY-MM-DD"): lo interpreta como medianoche UTC y en Argentina muestra el día anterior.
+ */
+export function parseFechaDB(fecha: string): Date {
+  const [y, m, d] = fecha.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d, 12, 0, 0)
+}

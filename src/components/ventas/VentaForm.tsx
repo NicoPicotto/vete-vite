@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ventaSchema, type VentaFormValues } from "@/lib/schemas";
 import type { Producto, MetodoPago } from "@/lib/types";
+import { fechaToInput, parseFechaDB } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
    Card,
@@ -398,9 +399,9 @@ export function VentaForm({
                         <Input
                            id='fecha'
                            type='date'
-                           defaultValue={new Date().toISOString().split("T")[0]}
+                           defaultValue={fechaToInput(new Date())}
                            onChange={(e) =>
-                              setValue("fecha", new Date(e.target.value))
+                              setValue("fecha", parseFechaDB(e.target.value))
                            }
                         />
                         {errors.fecha && (
