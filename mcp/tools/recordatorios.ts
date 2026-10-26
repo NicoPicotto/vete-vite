@@ -4,6 +4,33 @@ import { getSupabase } from '../supabase.js';
 import { esFechaValida, fechaAR, formatearFechaDB, instanteAR, mediodiaUTC, sumarDias } from '../fechas.js';
 import { ANOTACION_CARGA, ANOTACION_LECTURA, fallo, ok, seguro } from '../respuestas.js';
 
+interface DatosRecordatorio {
+  mascotaId: string;
+  clienteId: string;
+  titulo: string;
+  fecha: string; // YYYY-MM-DD
+  descripcion?: string;
+  historiaClinicaId?: string;
+}
+
+/** Fila para insertar en recordatorios. Mismos campos que recordatorioToDb (src/services/recordatorios.service.ts) */
+export const filaRecordatorio = ({ mascotaId, clienteId, titulo, fecha, descripcion, historiaClinicaId }: DatosRecordatorio) => ({
+  historia_clinica_id: historiaClinicaId ?? null,
+  mascota_id: mascotaId,
+  cliente_id: clienteId,
+  titulo,
+  descripcion: descripcion || null,
+  fecha_recordatorio: mediodiaUTC(fecha),
+  es_recurrente: false,
+  frecuencia_recurrencia: null,
+  intervalo_personalizado: null,
+  estado: 'Pendiente',
+  creado_por: null,
+  fecha_creacion: new Date().toISOString(),
+  fecha_original: null,
+  notas_reprogramacion: null,
+});
+
 export const registrarToolsRecordatorios = (server: McpServer) => {
   server.registerTool(
     'recordatorios_proximos',
@@ -78,23 +105,9 @@ export const registrarToolsRecordatorios = (server: McpServer) => {
       if (errorMascota) throw new Error(errorMascota.message);
       if (!mascota) return fallo('No existe una mascota con ese ID.');
 
-      // Mismos campos que recordatorioToDb (src/services/recordatorios.service.ts)
-      const { error } = await supabase.from('recordatorios').insert({
-        historia_clinica_id: null,
-        mascota_id: mascotaId,
-        cliente_id: mascota.cliente_id,
-        titulo,
-        descripcion: descripcion || null,
-        fecha_recordatorio: mediodiaUTC(fecha),
-        es_recurrente: false,
-        frecuencia_recurrencia: null,
-        intervalo_personalizado: null,
-        estado: 'Pendiente',
-        creado_por: null,
-        fecha_creacion: new Date().toISOString(),
-        fecha_original: null,
-        notas_reprogramacion: null,
-      });
+      const { error } = await supabase
+        .from('recordatorios')
+        .insert(filaRecordatorio({ mascotaId, clienteId: mascota.cliente_id, titulo, fecha, descripcion }));
       if (error) throw new Error(error.message);
 
       return ok({ resultado: 'Recordatorio creado', mascota: mascota.nombre, titulo, fecha: formatearFechaDB(fecha) });

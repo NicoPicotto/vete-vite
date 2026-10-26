@@ -1,8 +1,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { getSupabase } from '../supabase.js';
-import { esFechaValida, fechaAR, formatearFechaDB, horaAR } from '../fechas.js';
+import { esFechaValida, fechaAR, formatearFechaDB, horaAR, instanteAR, REGEX_HORA } from '../fechas.js';
 import { ANOTACION_CARGA, ANOTACION_LECTURA, fallo, limpiarBusqueda, ok, seguro } from '../respuestas.js';
+import { filaRecordatorio } from './recordatorios.js';
 
 const recortar = (texto: string | null, max = 600) =>
   texto && texto.length > max ? `${texto.slice(0, max)}…` : texto ?? undefined;
@@ -218,6 +219,116 @@ export const registrarToolsMascotas = (server: McpServer) => {
         mascota: mascota.nombre,
         tipo: tipoDesparasitacion,
         fecha: formatearFechaDB(fechaFinal),
+      });
+    })
+  );
+
+  // Límites iguales a historiaClinicaSchema (src/lib/schemas.ts)
+  server.registerTool(
+    'registrar_consulta',
+    {
+      title: 'Registrar consulta (historia clínica)',
+      description:
+        'Registra una consulta en la historia clínica de una mascota. Si la consulta corresponde a un turno, pasá turnoId y el turno ' +
+        'queda Completado. Opcionalmente crea un recordatorio vinculado (ej: control en 15 días). No admite archivos adjuntos.',
+      inputSchema: {
+        mascotaId: z.string().uuid().describe('ID de la mascota'),
+        motivoConsulta: z.string().min(3).describe('Motivo breve de la consulta. Ej: "Vómitos", "Control post-castración"'),
+        notas: z.string().max(2000).optional().describe('Observaciones, diagnóstico y tratamiento, tal como los dictó el usuario'),
+        peso: z.number().positive().max(1000).optional().describe('Peso en kg. Ej: 12.4'),
+        temperatura: z.number().min(30).max(45).optional().describe('Temperatura en °C. Ej: 38.9'),
+        veterinario: z.string().max(100).optional().describe('Veterinario/a que atendió'),
+        fecha: fechaOpcional,
+        hora: z.string().optional().describe('Hora HH:MM en hora Argentina. Si se omite, se usa la hora actual'),
+        turnoId: z.string().uuid().optional().describe('ID del turno de esta consulta (obtenelo con turnos), para marcarlo Completado'),
+        recordatorio: z
+          .object({
+            titulo: z.string().min(1).describe('Título breve. Ej: "Control post-operatorio"'),
+            fecha: z.string().describe('Fecha del recordatorio, YYYY-MM-DD'),
+            descripcion: z.string().optional().describe('Detalle opcional'),
+          })
+          .optional()
+          .describe('Recordatorio opcional vinculado a esta consulta'),
+      },
+      annotations: ANOTACION_CARGA,
+    },
+    seguro(async ({ mascotaId, motivoConsulta, notas, peso, temperatura, veterinario, fecha, hora, turnoId, recordatorio }) => {
+      const ahora = new Date();
+      const fechaFinal = resolverFecha(fecha);
+      if (!fechaFinal) return fallo('Fecha inválida. Usá el formato YYYY-MM-DD.');
+      const horaFinal = hora ?? horaAR(ahora);
+      if (!REGEX_HORA.test(horaFinal)) return fallo(`Hora inválida "${horaFinal}". Usá el formato HH:MM (ej: 17:30).`);
+      const instante = instanteAR(fechaFinal, horaFinal);
+      if (Number.isNaN(Date.parse(instante))) return fallo(`Hora inválida "${horaFinal}".`);
+      // Margen de 5 min por diferencias de reloj al usar la hora actual
+      if (new Date(instante).getTime() > ahora.getTime() + 5 * 60_000) {
+        return fallo('No se pueden registrar consultas en una fecha u hora futura.');
+      }
+      if (recordatorio && !esFechaValida(recordatorio.fecha)) {
+        return fallo('Fecha del recordatorio inválida. Usá el formato YYYY-MM-DD.');
+      }
+
+      const supabase = getSupabase();
+      const mascota = await obtenerMascota(mascotaId);
+      if (!mascota) return fallo('No existe una mascota con ese ID.');
+
+      if (turnoId) {
+        const { data: turno, error } = await supabase.from('turnos').select('mascota_id').eq('id', turnoId).maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!turno) return fallo('No existe un turno con ese ID.');
+        if (turno.mascota_id !== mascotaId) return fallo('Ese turno no es de esta mascota.');
+      }
+
+      // Mismos campos que historiaClinicaToDb (src/services/historia.service.ts)
+      const { data: consulta, error } = await supabase
+        .from('historia_clinica')
+        .insert({
+          mascota_id: mascotaId,
+          fecha: instante,
+          motivo_consulta: motivoConsulta,
+          peso: peso ?? null,
+          temperatura: temperatura ?? null,
+          vacunas_aplicadas: null,
+          archivo_adjunto: null,
+          notas: notas || null,
+          veterinario: veterinario || null,
+        })
+        .select('id')
+        .single();
+      if (error) throw new Error(error.message);
+
+      // La consulta ya quedó guardada: si falla un paso extra se informa sin tirar error (evita que Claude reintente y duplique)
+      const avisos: string[] = [];
+      if (turnoId) {
+        const { error: errorTurno } = await supabase.from('turnos').update({ estado: 'Completado' }).eq('id', turnoId);
+        if (errorTurno) avisos.push(`No se pudo marcar el turno como Completado: ${errorTurno.message}`);
+      }
+      if (recordatorio) {
+        const { error: errorRecordatorio } = await supabase.from('recordatorios').insert(
+          filaRecordatorio({
+            mascotaId,
+            clienteId: mascota.cliente_id as string,
+            titulo: recordatorio.titulo,
+            fecha: recordatorio.fecha,
+            descripcion: recordatorio.descripcion,
+            historiaClinicaId: consulta.id,
+          })
+        );
+        if (errorRecordatorio) avisos.push(`No se pudo crear el recordatorio: ${errorRecordatorio.message}`);
+      }
+      if (mascota.estado === 'Fallecido') avisos.push('Atención: la mascota figura como Fallecida en el sistema.');
+
+      return ok({
+        resultado: 'Consulta registrada',
+        mascota: mascota.nombre,
+        fecha: `${formatearFechaDB(fechaFinal)} ${horaFinal}`,
+        motivo: motivoConsulta,
+        turnoCompletado: turnoId && !avisos.some((a) => a.includes('turno')) ? true : undefined,
+        recordatorio:
+          recordatorio && !avisos.some((a) => a.includes('recordatorio'))
+            ? `${recordatorio.titulo} (${formatearFechaDB(recordatorio.fecha)})`
+            : undefined,
+        avisos: avisos.length > 0 ? avisos : undefined,
       });
     })
   );
