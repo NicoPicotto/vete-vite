@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Venta, VentaItem, VentaFormInput } from '@/lib/types';
+import { calcularDescuento, calcularRecargo } from '@/lib/ventas';
 
 // Tipos para las tablas de Supabase (snake_case)
 interface VentaDB {
@@ -132,32 +133,8 @@ export const getVentaById = async (id: string): Promise<Venta> => {
   return dbToVenta(ventaData as VentaDB, (itemsData as VentaItemDB[]) || []);
 };
 
-/**
- * Calcular monto de descuento según tipo y valor
- * Exportada para uso en UI (mostrar descuento en tiempo real)
- */
-export const calcularDescuento = (subtotal: number, tipo: '$' | '%', valor: number): number => {
-  if (valor <= 0) return 0;
-  if (tipo === '%') return Math.round(subtotal * (valor / 100));
-  return Math.round(valor);
-};
-
-/**
- * Calcular recargo según método de pago
- * Exportada para uso en UI (mostrar recargo en tiempo real)
- */
-export const calcularRecargo = (subtotal: number, metodoPago: 'Contado' | 'Débito' | 'Crédito'): number => {
-  switch (metodoPago) {
-    case 'Contado':
-      return 0; // Sin recargo
-    case 'Débito':
-      return Math.round(subtotal * 0.05); // +5%
-    case 'Crédito':
-      return Math.round(subtotal * 0.20); // +20%
-    default:
-      return 0;
-  }
-};
+// Cálculos compartidos con el servidor MCP (src/lib/ventas.ts)
+export { calcularDescuento, calcularRecargo };
 
 /**
  * Crear una nueva venta con sus items

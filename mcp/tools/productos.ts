@@ -36,7 +36,9 @@ export const registrarToolsProductos = (server: McpServer) => {
     'buscar_producto',
     {
       title: 'Buscar producto',
-      description: 'Busca productos del inventario por nombre o SKU. Devuelve precio de venta, stock y notas (lote, vencimiento, etc.).',
+      description:
+        'Busca productos del inventario por nombre o SKU (los servicios, como las consultas, también son productos). ' +
+        'Devuelve productoId, precio de venta, stock y notas (lote, vencimiento, etc.). Los marcados sinStock no se pueden vender.',
       inputSchema: {
         texto: z.string().min(2).describe('Nombre o SKU (puede ser parcial). Ej: "Bravecto", "alimento gato"'),
       },
@@ -46,7 +48,7 @@ export const registrarToolsProductos = (server: McpServer) => {
       const terminos = limpiarBusqueda(texto).split(/\s+/).filter(Boolean);
       let query = getSupabase()
         .from('productos')
-        .select('nombre, categoria, sku, precio_venta, cantidad_existente, cantidad_ideal, notas')
+        .select('id, nombre, categoria, sku, precio_venta, cantidad_existente, cantidad_ideal, notas')
         .order('nombre', { ascending: true })
         .limit(20);
       for (const t of terminos) {
@@ -59,11 +61,13 @@ export const registrarToolsProductos = (server: McpServer) => {
 
       return ok(
         data.map((p) => ({
+          productoId: p.id,
           producto: p.nombre,
           categoria: p.categoria,
           sku: p.sku ?? undefined,
           precioVenta: p.precio_venta,
           stock: p.cantidad_existente,
+          sinStock: Number(p.cantidad_existente) <= 0 ? true : undefined,
           stockIdeal: p.cantidad_ideal,
           notas: p.notas ?? undefined,
         }))
